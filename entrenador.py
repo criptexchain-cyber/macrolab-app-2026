@@ -1,98 +1,149 @@
 import random
-from database_ejercicios import DB_EJERCICIOS
 
-def obtener_parametros_objetivo(objetivo, nivel):
-    if objetivo == '1': return "6-10", "RIR 2", "90-120 seg", "INTENSIDAD"
-    elif objetivo == '2': return "8-12", "RIR 1-2", "90 seg", "VOLUMEN"
-    else: return "4-6", "RIR 3", "3 min", "FUERZA"
+# --- BASE DE DATOS DE EJERCICIOS (INTEGRADA) ---
+DB_EJERCICIOS = {
+    "pecho": [
+        {"nombre": "Press Banca con Barra", "tipo": "compuesto", "nivel": 1, "tips": "Barra al esternón, codos a 45º."},
+        {"nombre": "Press Inclinado Mancuernas", "tipo": "compuesto", "nivel": 1, "tips": "Banco a 30º, controla la bajada."},
+        {"nombre": "Fondos en Paralelas", "tipo": "compuesto", "nivel": 2, "tips": "Inclínate adelante para enfatizar pecho."},
+        {"nombre": "Aperturas con Mancuernas", "tipo": "aislamiento", "nivel": 1, "tips": "Imagina abrazar un árbol, estira bien."},
+        {"nombre": "Cruce de Poleas", "tipo": "aislamiento", "nivel": 2, "tips": "Aprieta un segundo en el punto de máxima contracción."},
+        {"nombre": "Flexiones (Push-ups)", "tipo": "compuesto", "nivel": 1, "tips": "Cuerpo en tabla, pecho al suelo."}
+    ],
+    "espalda": [
+        {"nombre": "Dominadas", "tipo": "compuesto", "nivel": 2, "tips": "Rango completo, pecho a la barra."},
+        {"nombre": "Remo con Barra", "tipo": "compuesto", "nivel": 2, "tips": "Espalda recta, tira hacia la cadera."},
+        {"nombre": "Jalón al Pecho", "tipo": "compuesto", "nivel": 1, "tips": "No te balancees, codos hacia abajo."},
+        {"nombre": "Remo Gironda (Polea Baja)", "tipo": "compuesto", "nivel": 1, "tips": "Saca pecho, aprieta escápulas atrás."},
+        {"nombre": "Pull Over en Polea", "tipo": "aislamiento", "nivel": 2, "tips": "Brazos semirrígidos, siente el dorsal."},
+        {"nombre": "Remo Unilateral con Mancuerna", "tipo": "compuesto", "nivel": 1, "tips": "Apóyate en banco, espalda paralela al suelo."}
+    ],
+    "pierna_quad": [
+        {"nombre": "Sentadilla con Barra", "tipo": "compuesto", "nivel": 2, "tips": "Rompe el paralelo, peso en talones."},
+        {"nombre": "Prensa de Piernas", "tipo": "compuesto", "nivel": 1, "tips": "No bloquees rodillas al extender."},
+        {"nombre": "Zancadas (Lunges)", "tipo": "compuesto", "nivel": 1, "tips": "Rodilla trasera casi toca el suelo."},
+        {"nombre": "Sentadilla Búlgara", "tipo": "compuesto", "nivel": 3, "tips": "Inclínate un poco, infierno para glúteo/quad."},
+        {"nombre": "Extensiones de Cuádriceps", "tipo": "aislamiento", "nivel": 1, "tips": "Aguanta 1 segundo arriba."}
+    ],
+    "pierna_femoral": [
+        {"nombre": "Peso Muerto Rumano", "tipo": "compuesto", "nivel": 2, "tips": "Cadera atrás, siente el estiramiento."},
+        {"nombre": "Curl Femoral Tumbado", "tipo": "aislamiento", "nivel": 1, "tips": "No levantes la cadera del banco."},
+        {"nombre": "Hip Thrust", "tipo": "compuesto", "nivel": 2, "tips": "Mentón al pecho, empuja con talones."},
+        {"nombre": "Peso Muerto Piernas Rígidas", "tipo": "compuesto", "nivel": 2, "tips": "Enfoque total en isquios."}
+    ],
+    "hombro": [
+        {"nombre": "Press Militar (Barra/Mancuerna)", "tipo": "compuesto", "nivel": 2, "tips": "Core apretado, no arquees espalda excesivamente."},
+        {"nombre": "Elevaciones Laterales", "tipo": "aislamiento", "nivel": 1, "tips": "Codos lideran el movimiento, no muñecas."},
+        {"nombre": "Pájaros (Deltoides Posterior)", "tipo": "aislamiento", "nivel": 1, "tips": "Torso paralelo al suelo o en máquina."},
+        {"nombre": "Face Pull", "tipo": "funcional", "nivel": 1, "tips": "Tira hacia la frente, rotación externa."}
+    ],
+    "biceps": [
+        {"nombre": "Curl con Barra Z", "tipo": "aislamiento", "nivel": 1, "tips": "Codos pegados al cuerpo."},
+        {"nombre": "Curl Martillo", "tipo": "aislamiento", "nivel": 1, "tips": "Agarre neutro, enfoca braquial."},
+        {"nombre": "Curl Inclinado Mancuernas", "tipo": "aislamiento", "nivel": 2, "tips": "Estiramiento máximo del bíceps."}
+    ],
+    "triceps": [
+        {"nombre": "Press Francés", "tipo": "aislamiento", "nivel": 2, "tips": "Codos cerrados, barra a la frente."},
+        {"nombre": "Extensiones Polea Alta", "tipo": "aislamiento", "nivel": 1, "tips": "Hombros fijos, solo mueve antebrazo."},
+        {"nombre": "Fondos entre Bancos", "tipo": "aislamiento", "nivel": 1, "tips": "Baja controlado."}
+    ],
+    "abs": [
+        {"nombre": "Plancha Abdominal (Plank)", "tipo": "funcional", "nivel": 1, "tips": "Cuerpo recto, aprieta glúteo y abdomen."},
+        {"nombre": "Elevación de Piernas Colgado", "tipo": "funcional", "nivel": 2, "tips": "No te balancees, controla la bajada."},
+        {"nombre": "Crunch en Polea", "tipo": "aislamiento", "nivel": 1, "tips": "No tires con los brazos, enrolla el tronco."},
+        {"nombre": "Rueda Abdominal", "tipo": "funcional", "nivel": 3, "tips": "Solo baja hasta donde puedas volver con abs."}
+    ]
+}
 
-def calcular_volumen(nivel, tipo_ejercicio):
-    base = 3
-    if nivel == '2': base = 4 
-    elif nivel == '3': base = 5 
-    if tipo_ejercicio == 'aislamiento': return base
-    return base
+# --- LÓGICA DEL ENTRENADOR ---
 
-def asignar_tempo(tipo_ejercicio):
-    if tipo_ejercicio == 'multiarticular': return "3-0-1-0" 
-    elif tipo_ejercicio == 'aislamiento': return "2-1-1-1" 
-    return "2-0-2-0"
-
-def buscar_y_seleccionar(filtro_patron, filtro_tipo, usados):
-    candidatos = []
-    for key, datos in DB_EJERCICIOS.items():
-        if filtro_patron and datos['patron'] != filtro_patron: continue
-        if filtro_tipo and datos['tipo'] != filtro_tipo: continue
-        if key not in usados: candidatos.append(key)
+def seleccionar_ejercicios(grupo, n, nivel_usuario):
+    pool = DB_EJERCICIOS.get(grupo, [])
+    # Filtrar por complejidad si es novato (nivel 1)
+    if nivel_usuario == "1":
+        pool = [e for e in pool if e['nivel'] <= 2]
     
-    if not candidatos: return None, None 
-    elegido_key = random.choice(candidatos)
-    return elegido_key, DB_EJERCICIOS[elegido_key]
+    random.shuffle(pool)
+    return pool[:n]
 
 def generar_rutina(perfil):
     dias = perfil['dias_entreno']
-    objetivo = perfil['goal']
     nivel = perfil['nivel_entreno']
+    rutina = {"info": {}, "sesiones": {}}
     
-    repes_obj, rir_obj, descanso_obj, enfoque = obtener_parametros_objetivo(objetivo, nivel)
-    
-    rutina_data = {
-        "info": {
-            "estrategia": enfoque, "dias": dias,
-            "pauta_progresion": ["Sube peso cuando llegues al tope de repes.", "Descarga cada 6 semanas."]
-        },
-        "sesiones": {}
-    }
-
-    estructura_nombres = []
-    if dias == 3: estructura_nombres = ["FULL BODY A", "FULL BODY B", "FULL BODY C"]
-    elif dias == 4: estructura_nombres = ["TORSO (Fuerza)", "PIERNA (Fuerza)", "TORSO (Hipertrofia)", "PIERNA (Hipertrofia)"]
-    elif dias == 5: estructura_nombres = ["EMPUJE", "TRACCIÓN", "PIERNA", "TORSO SUPERIOR", "BRAZOS"]
-    else: estructura_nombres = ["PUSH A", "PULL A", "LEGS A", "PUSH B", "PULL B", "LEGS B"]
-
-    for dia_nombre in estructura_nombres:
-        rutina_data["sesiones"][dia_nombre] = []
-        
-        # PLANTILLA SIMPLIFICADA PARA EL EJEMPLO
-        plantilla = []
-        if "FULL BODY" in dia_nombre:
-            plantilla = [("sentadilla", "multiarticular"), ("empuje_horizontal", "multiarticular"), ("traccion_vertical", "multiarticular"), ("bisagra_cadera", "accesorio"), ("empuje_vertical", "accesorio"), ("flexion_codo", "aislamiento")]
-        elif "TORSO" in dia_nombre or "SUPERIOR" in dia_nombre:
-            plantilla = [("empuje_horizontal", "multiarticular"), ("traccion_vertical", "multiarticular"), ("empuje_vertical", "multiarticular"), ("traccion_horizontal", "accesorio"), ("abduccion", "aislamiento"), ("extension_codo", "aislamiento")]
-        elif "PIERNA" in dia_nombre or "LEGS" in dia_nombre:
-            plantilla = [("sentadilla", "multiarticular"), ("bisagra_cadera", "multiarticular"), ("empuje_pierna", "multiarticular"), ("extension_rodilla", "aislamiento"), ("flexion_rodilla", "aislamiento"), ("extension_cadera", "aislamiento")]
-        elif "PUSH" in dia_nombre or "EMPUJE" in dia_nombre:
-            plantilla = [("empuje_horizontal", "multiarticular"), ("empuje_vertical", "multiarticular"), ("empuje_inclinado", "accesorio"), ("abduccion", "aislamiento"), ("extension_codo", "aislamiento")]
-        elif "PULL" in dia_nombre or "TRACCIÓN" in dia_nombre:
-            plantilla = [("traccion_vertical", "multiarticular"), ("traccion_horizontal", "multiarticular"), ("traccion_horizontal", "accesorio"), ("rotacion_externa", "aislamiento"), ("flexion_codo", "aislamiento")]
-        elif "BRAZOS" in dia_nombre:
-            plantilla = [("flexion_codo", "accesorio"), ("extension_codo", "accesorio"), ("flexion_codo_neutra", "aislamiento"), ("extension_codo", "aislamiento"), ("abduccion", "aislamiento")]
-
-        usados_sesion = [] 
-        for patron, tipo_preferido in plantilla:
-            key, datos = buscar_y_seleccionar(patron, tipo_preferido, usados_sesion)
-            if not key: key, datos = buscar_y_seleccionar(patron, None, usados_sesion)
+    # ESTRATEGIA SEGÚN DÍAS
+    if dias == 3:
+        rutina['info']['estrategia'] = "Full Body (Cuerpo Completo)"
+        esquema = ["Full Body A", "Full Body B", "Full Body C"]
+        for dia_nombre in esquema:
+            sesion = []
+            sesion.extend(seleccionar_ejercicios("pierna_quad", 1, nivel))
+            sesion.extend(seleccionar_ejercicios("pecho", 1, nivel))
+            sesion.extend(seleccionar_ejercicios("espalda", 1, nivel))
+            sesion.extend(seleccionar_ejercicios("hombro", 1, nivel))
+            sesion.extend(seleccionar_ejercicios("pierna_femoral", 1, nivel))
+            sesion.extend(seleccionar_ejercicios("abs", 1, nivel))
             
-            if key and datos:
-                usados_sesion.append(key)
-                series_num = calcular_volumen(nivel, datos['tipo'])
-                
-                # CREAMOS LA INSTRUCCIÓN DE SERIES EN TEXTO CLARO
-                instruccion_series = f"Realiza {series_num} series efectivas."
-                if datos['tipo'] == 'multiarticular':
-                    instruccion_series = f"Haz 3 series de calentamiento (subiendo peso) y luego {series_num} series efectivas."
-                
-                ejercicio_dict = {
-                    "nombre": datos['nombre'],
-                    "series_num": series_num, # Guardamos el número limpio
-                    "instruccion_series": instruccion_series, # Texto explicativo
-                    "repes": repes_obj,
-                    "rir": "RIR 0" if datos['tipo'] == 'aislamiento' else rir_obj,
-                    "tempo": asignar_tempo(datos['tipo']),
-                    "descanso": descanso_obj,
-                    "tipo": datos['tipo'],
-                    "tips": datos.get('tips', "Realiza el movimiento con control.") # Recuperamos el tip
-                }
-                rutina_data["sesiones"][dia_nombre].append(ejercicio_dict)
+            # Asignar series y repes
+            for ej in sesion:
+                ej['series_num'] = 3
+                ej['repes'] = "8-12" if ej['tipo'] == 'compuesto' else "12-15"
+            
+            rutina['sesiones'][dia_nombre] = sesion
 
-    return rutina_data
+    elif dias == 4:
+        rutina['info']['estrategia'] = "Torso / Pierna (Frecuencia 2)"
+        esquema = {"Torso A": ["pecho", "espalda", "hombro", "biceps", "triceps"],
+                   "Pierna A": ["pierna_quad", "pierna_femoral", "pierna_quad", "abs"],
+                   "Torso B": ["espalda", "pecho", "hombro", "triceps", "biceps"],
+                   "Pierna B": ["pierna_femoral", "pierna_quad", "pierna_femoral", "abs"]}
+        
+        for nombre_sesion, grupos in esquema.items():
+            sesion = []
+            for g in grupos:
+                cant = 2 if g in ["pecho", "espalda"] else 1
+                sesion.extend(seleccionar_ejercicios(g, cant, nivel))
+            
+            for ej in sesion:
+                ej['series_num'] = 3 if ej['tipo'] == 'compuesto' else 2
+                ej['repes'] = "6-10" if ej['tipo'] == 'compuesto' else "10-15"
+                
+            rutina['sesiones'][nombre_sesion] = sesion
+
+    elif dias >= 5:
+        rutina['info']['estrategia'] = "PPL (Empuje / Tirón / Pierna)"
+        esquema = {"Push (Empuje)": ["pecho", "pecho", "hombro", "triceps", "triceps"],
+                   "Pull (Tirón)": ["espalda", "espalda", "biceps", "biceps", "hombro"],
+                   "Legs (Pierna)": ["pierna_quad", "pierna_femoral", "pierna_quad", "pierna_femoral", "abs"],
+                   "Upper (Torso)": ["pecho", "espalda", "hombro", "biceps"],
+                   "Lower (Pierna)": ["pierna_quad", "pierna_femoral", "abs"]}
+        
+        # Ajustar si son 6 días (repetir PPL)
+        claves = list(esquema.keys())
+        if dias == 6: claves = ["Push A", "Pull A", "Legs A", "Push B", "Pull B", "Legs B"]
+        
+        count = 0
+        for nombre_dia in claves:
+            if dias == 5 and count >= 5: break
+            
+            # Mapeo simple para PPL repetido
+            base_dia = nombre_dia.split()[0] # "Push" de "Push A"
+            if base_dia == "Upper": grupos = esquema["Upper (Torso)"]
+            elif base_dia == "Lower": grupos = esquema["Lower (Pierna)"]
+            elif "Push" in nombre_dia: grupos = esquema["Push (Empuje)"]
+            elif "Pull" in nombre_dia: grupos = esquema["Pull (Tirón)"]
+            elif "Legs" in nombre_dia: grupos = esquema["Legs (Pierna)"]
+            else: grupos = []
+
+            sesion = []
+            for g in grupos:
+                sesion.extend(seleccionar_ejercicios(g, 1, nivel))
+            
+            for ej in sesion:
+                ej['series_num'] = 4 if ej['tipo'] == 'compuesto' else 3
+                ej['repes'] = "8-12"
+            
+            rutina['sesiones'][nombre_dia] = sesion
+            count += 1
+            
+    return rutina
