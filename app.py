@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components  # <--- ESTA ES LA CLAVE
+import streamlit.components.v1 as components
 import datetime
 import random
 import copy
@@ -11,17 +11,12 @@ from generador import buscar_alimento_perfecto
 from entrenador import generar_rutina
 
 # --- ZONA DE CONEXIÓN CON GOOGLE ---
-# Borra la frase de abajo y pega TU CÓDIGO largo de Google entre las comillas triples:
+# Tu código de AdSense ya insertado correctamente:
 codigo_adsense = """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9041000863577990"
      crossorigin="anonymous"></script>
 """
-
-# Esta línea envía la señal a Google
 components.html(codigo_adsense, height=0)
 # -----------------------------------
-
-# (Aquí abajo sigue tu código normal: ARREGLO DE RUTA, etc...)
-
 
 # --- 🔧 ARREGLO DE RUTA ---
 try:
@@ -261,7 +256,7 @@ else:
                 for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                 st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
 
-with t_compra:
+    with t_compra:
         st.header("🛒 Tu Lista y Tienda Fitness")
         
         # --- PARTE 1: LA LISTA ---
@@ -305,10 +300,7 @@ with t_compra:
         st.divider()
         st.caption("Nota: Comprando aquí apoyas a MacroLab.")
 
-
-
-            
-with t_share:
+    with t_share:
         st.markdown("### 📤 Enviar Plan")
         texto_plan = generar_texto_plano(st.session_state.rutina, st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
         
@@ -333,3 +325,5 @@ with t_share:
 
     st.divider()
     st.warning("⚠️ **Descargo de Responsabilidad:** Esta aplicación es una herramienta educativa. Consulta a un profesional antes de empezar.")
+
+  
