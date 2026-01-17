@@ -261,7 +261,7 @@ else:
                 for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                 st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
 
-     with t_compra:
+       with t_compra:
         st.header("🛒 Tu Lista y Tienda Fitness")
         
         # --- PARTE 1: LA LISTA ---
@@ -304,6 +304,8 @@ else:
         
         st.divider()
         st.caption("Nota: Comprando aquí apoyas a MacroLab.")
+
+
 
             
     with t_share:
