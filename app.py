@@ -261,11 +261,50 @@ else:
                 for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                 st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
 
-    with t_compra:
-        st.markdown(f"### 🛒 Lista Semanal")
-        st.caption(f"Basada en {dias_entreno} días ON y {7-dias_entreno} días OFF.")
-        for item, cant in sorted(st.session_state.lista_compra.items()):
-            st.checkbox(f"{item}: {int(cant)}g")
+     with t_compra:
+        st.header("🛒 Tu Lista y Tienda Fitness")
+        
+        # --- PARTE 1: LA LISTA ---
+        st.subheader("📋 Ingredientes Necesarios")
+        if st.session_state.lista_compra:
+            st.info("Marca las casillas mientras compras:")
+            for item, cantidad in sorted(st.session_state.lista_compra.items()):
+                st.checkbox(f"**{item.title()}**: {int(cantidad)} g")
+            
+            if st.button("🗑️ Borrar lista"):
+                st.session_state.lista_compra = {}
+                st.rerun()
+        else:
+            st.warning("👈 Tu lista está vacía. Genera una dieta primero.")
+
+        st.divider()
+
+        # --- PARTE 2: LA TIENDA ---
+        st.subheader("💪 Equipamiento y Suplementos")
+        
+        # Fila 1: Suplementos
+        st.markdown("##### 💊 Suplementación")
+        c1, c2, c3 = st.columns(3)
+        with c1: st.link_button("🥛 Proteína", "https://www.amazon.es/s?k=proteina+whey")
+        with c2: st.link_button("⚡ Creatina", "https://www.amazon.es/s?k=creatina+monohidrato")
+        with c3: st.link_button("🚀 Pre-Entreno", "https://www.amazon.es/s?k=pre+workout")
+
+        # Fila 2: Casa
+        st.markdown("##### 🏠 Gym en Casa")
+        c4, c5, c6 = st.columns(3)
+        with c4: st.link_button("🏋️ Mancuernas", "https://www.amazon.es/s?k=juego+mancuernas")
+        with c5: st.link_button("🧘 Esterilla", "https://www.amazon.es/s?k=esterilla+yoga")
+        with c6: st.link_button("🧶 Gomas", "https://www.amazon.es/s?k=bandas+elasticas")
+
+        # Fila 3: Accesorios
+        st.markdown("##### 🎒 Accesorios")
+        c7, c8 = st.columns(2)
+        with c7: st.link_button("⚖️ Báscula", "https://www.amazon.es/s?k=bascula+cocina+digital")
+        with c8: st.link_button("📏 Cinta", "https://www.amazon.es/s?k=cinta+metrica")
+        
+        st.divider()
+        st.caption("Nota: Comprando aquí apoyas a MacroLab.")
+
             
     with t_share:
         st.markdown("### 📤 Enviar Plan")
