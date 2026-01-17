@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components  # <--- ESTA ES LA CLAVE
 import datetime
 import random
 import copy
@@ -8,6 +9,19 @@ from collections import defaultdict
 from calculadora import calcular_macros
 from generador import buscar_alimento_perfecto
 from entrenador import generar_rutina
+
+# --- ZONA DE CONEXIÓN CON GOOGLE ---
+# Borra la frase de abajo y pega TU CÓDIGO largo de Google entre las comillas triples:
+codigo_adsense = """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9041000863577990"
+     crossorigin="anonymous"></script>
+"""
+
+# Esta línea envía la señal a Google
+components.html(codigo_adsense, height=0)
+# -----------------------------------
+
+# (Aquí abajo sigue tu código normal: ARREGLO DE RUTA, etc...)
+
 
 # --- 🔧 ARREGLO DE RUTA ---
 try:
