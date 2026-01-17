@@ -302,8 +302,8 @@ with t_compra:
         with c7: st.link_button("⚖️ Báscula", "https://www.amazon.es/s?k=bascula+cocina+digital")
         with c8: st.link_button("📏 Cinta", "https://www.amazon.es/s?k=cinta+metrica")
         
-        st.divider()
-        st.caption("Nota: Comprando aquí apoyas a MacroLab.")
+         st.divider()
+         st.caption("Nota: Comprando aquí apoyas a MacroLab.")
 
 
 
