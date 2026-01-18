@@ -70,18 +70,25 @@ def calcular_macros_descanso(res_entreno):
     return res_descanso
 
 def calcular_macros_lineal(macros_on, macros_off, dias_entreno):
-    """Calcula el promedio ponderado semanal para la dieta lineal"""
+    """Calcula el promedio ponderado semanal EXACTO para la dieta lineal"""
     dias_descanso = 7 - dias_entreno
     
-    # 1. Calcular Kcal Semanales Totales y dividir por 7
-    total_semanal = (macros_on['total'] * dias_entreno) + (macros_off['total'] * dias_descanso)
+    # Si entrenas 7 días, el lineal es igual al ON. Si entrenas 0, es igual al OFF.
+    if dias_entreno == 7: return copy.deepcopy(macros_on)
+    if dias_entreno == 0: return copy.deepcopy(macros_off)
+
+    # 1. Calcular Kcal Semanales Totales y dividir por 7 (Promedio)
+    kcal_on = macros_on['total']
+    kcal_off = macros_off['total']
+    
+    total_semanal = (kcal_on * dias_entreno) + (kcal_off * dias_descanso)
     diario_lineal = total_semanal / 7
     
     # 2. Crear estructura copia
     res_lineal = copy.deepcopy(macros_on)
     res_lineal['total'] = diario_lineal
     
-    # 3. Ajustar Macros (Promedio Ponderado)
+    # 3. Ajustar Macros (Promedio Ponderado de cada macro)
     p_on, c_on, f_on = macros_on['macros_totales']['p'], macros_on['macros_totales']['c'], macros_on['macros_totales']['f']
     p_off, c_off, f_off = macros_off['macros_totales']['p'], macros_off['macros_totales']['c'], macros_off['macros_totales']['f']
     
@@ -89,8 +96,8 @@ def calcular_macros_lineal(macros_on, macros_off, dias_entreno):
     res_lineal['macros_totales']['c'] = int((c_on * dias_entreno + c_off * dias_descanso) / 7)
     res_lineal['macros_totales']['f'] = int((f_on * dias_entreno + f_off * dias_descanso) / 7)
     
-    # 4. Ajustar Comidas individuales (Factor de corrección respecto al día ON)
-    # Si el día ON tiene 200g carbos y el lineal sale 150g, reducimos un 25% todas las comidas
+    # 4. Ajustar Comidas individuales (Reducir/Aumentar proporcionalmente respecto al día ON)
+    # Factor de corrección: Qué % representa el macro lineal respecto al macro ON
     ratio_c = res_lineal['macros_totales']['c'] / c_on if c_on > 0 else 1
     ratio_f = res_lineal['macros_totales']['f'] / f_on if f_on > 0 else 1
     
@@ -132,10 +139,17 @@ def crear_menu_diario(datos_macros, prohibidos):
 def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     dias_descanso = 7 - dias_entreno
     compra = defaultdict(float)
+    
+    # Sumamos ingredientes ON
     for comida in menu_on.values():
-        for item in comida['items']: compra[item['nombre']] += item['gramos_peso'] * dias_entreno
+        for item in comida['items']: 
+            compra[item['nombre']] += item['gramos_peso'] * dias_entreno
+            
+    # Sumamos ingredientes OFF
     for comida in menu_off.values():
-        for item in comida['items']: compra[item['nombre']] += item['gramos_peso'] * dias_descanso
+        for item in comida['items']: 
+            compra[item['nombre']] += item['gramos_peso'] * dias_descanso
+            
     return dict(compra)
 
 def mostrar_dashboard_macros(datos_macros, titulo):
@@ -154,14 +168,14 @@ def generar_texto_plano(rutina, menu_on, menu_off, dias_entreno):
     txt = f"*PLAN MACROLAB - SEMANAL*\n"
     txt += f"========================\n\n"
     
-    txt += f"*🔥 DIETA ENTRENAMIENTO / LINEAL*\n"
+    txt += f"*🔥 DIETA ENTRENAMIENTO*\n"
     for nombre, datos in menu_on.items():
         txt += f"_{nombre.upper()}_\n"
         for item in datos['items']:
             txt += f"- {item['nombre']}: {item['gramos_peso']}g\n"
         txt += "\n"
         
-    txt += f"*💤 DIETA DESCANSO (Opcional si ciclas)*\n"
+    txt += f"*💤 DIETA DESCANSO*\n"
     for nombre, datos in menu_off.items():
         txt += f"_{nombre.upper()}_\n"
         for item in datos['items']:
@@ -225,6 +239,10 @@ with st.sidebar:
     # BOTÓN DE GENERAR
     if st.button("🚀 INICIAR LABORATORIO", use_container_width=True):
         st.session_state.generado = True
+        
+        # 1. LIMPIEZA DE ESTADO ANTERIOR (Crucial para evitar errores de 0g)
+        st.session_state.lista_compra = {} 
+        
         perfil = {
             "weight": peso, "height": altura, "age": int(edad), "gender": genero, 
             "goal": obj_txt[0], "intensity": "2", "activity": actividad, 
@@ -339,9 +357,8 @@ else:
             st.warning("⚠️ Pulsa 'INICIAR LABORATORIO' de nuevo.")
 
     with t_lineal:
-        # AQUÍ AHORA SE MUESTRA EL PROMEDIO REAL
         mostrar_dashboard_macros(st.session_state.macros_lineal, "Dieta Lineal (Promedio Semanal Constante)")
-        st.caption("💡 Esta dieta mantiene el equilibrio calórico semanal comiendo lo mismo todos los días.")
+        st.caption("💡 Esta dieta mantiene el equilibrio calórico semanal comiendo lo mismo todos los días (Media entre ON y OFF).")
         if st.button("🔄 Generar Nuevo Menú Lineal"):
             st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_lineal, prohibidos)
             st.rerun()
@@ -374,12 +391,14 @@ else:
 
     with t_lista:
         st.header("📋 Lista de la Compra")
-        st.caption(f"Basada en tu planificación de {dias_entreno} días de entreno.")
+        st.caption(f"Basada en tu planificación de {dias_entreno} días de entreno (Dieta Cíclica ON/OFF).")
         
         if st.session_state.lista_compra:
             st.info("Marca las casillas mientras compras:")
             for item, cantidad in sorted(st.session_state.lista_compra.items()):
-                st.checkbox(f"**{item.title()}**: {int(cantidad)} g")
+                # FILTRO CLAVE: Si la cantidad es 0, no se muestra
+                if int(cantidad) > 0:
+                    st.checkbox(f"**{item.title()}**: {int(cantidad)} g")
             
             if st.button("🗑️ Borrar lista"):
                 st.session_state.lista_compra = {}
