@@ -101,8 +101,6 @@ def crear_menu_diario(datos_macros, prohibidos):
 def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     dias_descanso = 7 - dias_entreno
     compra = defaultdict(float)
-    # Nota: Si se usa dieta lineal, la lista debería ajustarse, pero mantenemos la lógica mixta por defecto
-    # para asegurar variedad en la compra.
     for comida in menu_on.values():
         for item in comida['items']: compra[item['nombre']] += item['gramos_peso'] * dias_entreno
     for comida in menu_off.values():
@@ -138,13 +136,14 @@ def generar_texto_plano(rutina, menu_on, menu_off, dias_entreno):
         for item in datos['items']:
             txt += f"- {item['nombre']}: {item['gramos_peso']}g\n"
         txt += "\n"
-        
-    txt += f"*🏋️ RUTINA*\n"
-    txt += f"Estrategia: {rutina['info']['estrategia']}\n"
-    for dia, ejercicios in rutina['sesiones'].items():
-        txt += f"\n*{dia.upper()}*\n"
-        for ej in ejercicios:
-            txt += f"{ej['nombre']} | {ej['series_num']}x{ej['repes']}\n"
+    
+    if rutina and 'info' in rutina:
+        txt += f"*🏋️ RUTINA*\n"
+        txt += f"Estrategia: {rutina['info'].get('estrategia', 'General')}\n"
+        for dia, ejercicios in rutina.get('sesiones', {}).items():
+            txt += f"\n*{dia.upper()}*\n"
+            for ej in ejercicios:
+                txt += f"{ej['nombre']} | {ej['series_num']}x{ej['repes']}\n"
         
     return txt
 
@@ -152,7 +151,8 @@ def generar_texto_plano(rutina, menu_on, menu_off, dias_entreno):
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'menu_on' not in st.session_state: st.session_state.menu_on = {}
 if 'menu_off' not in st.session_state: st.session_state.menu_off = {}
-if 'menu_lineal' not in st.session_state: st.session_state.menu_lineal = {} # Nuevo estado para lineal
+if 'menu_lineal' not in st.session_state: st.session_state.menu_lineal = {}
+if 'rutina' not in st.session_state: st.session_state.rutina = {}
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -177,7 +177,8 @@ with st.sidebar:
 
     st.subheader("🎯 Meta")
     obj_txt = st.selectbox("Objetivo", ["1. Perder Grasa", "2. Ganar Músculo", "3. Mantener"])
-    # CAMBIO: Slider de 0 a 7 días
+    
+    # SLIDER 0-7 DIAS
     dias_entreno = st.slider("Días Gym/Semana", 0, 7, 4)
     hora_entreno = st.time_input("Hora Entreno", datetime.time(18, 00))
     
@@ -198,15 +199,27 @@ with st.sidebar:
             "dias_entreno": dias_entreno, "horas_sueno": horas_sueno,
             "hora_entreno": hora_entreno.strftime("%H:%M")
         }
-        # Cálculos
-        st.session_state.macros_on = calcular_macros(perfil) # Base
-        st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on) # Descanso
-        # Menús
+        
+        # Cálculos de Dieta
+        st.session_state.macros_on = calcular_macros(perfil)
+        st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on)
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
-        st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_on, prohibidos) # Usamos la base para lineal
+        st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_on, prohibidos)
         
-        st.session_state.rutina = generar_rutina(perfil)
+        # CÁLCULO SEGURO DE RUTINA (Evita error con 0 días)
+        if dias_entreno > 0:
+            try:
+                st.session_state.rutina = generar_rutina(perfil)
+            except:
+                st.session_state.rutina = {'info': {'estrategia': 'Error calculando rutina'}, 'sesiones': {}}
+        else:
+            # Si son 0 días, creamos una rutina "ficticia" de descanso
+            st.session_state.rutina = {
+                'info': {'estrategia': 'Descanso Total / Recuperación'},
+                'sesiones': {}
+            }
+
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
 
 # --- VISTA PRINCIPAL ---
@@ -232,19 +245,23 @@ else:
         st.caption("Panel de Control Activo")
     st.markdown("---")
 
-    # CAMBIO: Nuevas pestañas y orden actualizado
     t_rutina, t_lineal, t_on, t_off, t_lista, t_tienda, t_share = st.tabs(["🏋️ RUTINA", "⚖️ LINEAL", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "🏪 TIENDA", "📤 COMPARTIR"])
     
     with t_rutina:
         rut = st.session_state.rutina
-        st.info(f"Estrategia: **{rut['info']['estrategia']}**")
-        for dia, ejes in rut['sesiones'].items():
-            with st.expander(f"📌 {dia}"):
-                for ej in ejes: 
-                    st.write(f"**{ej['nombre']}** | {ej['series_num']} series")
-                    st.caption(f"Técnica: {ej['tips']}")
+        # PROTECCIÓN CONTRA ERRORES DE LECTURA
+        if rut and 'info' in rut:
+            st.info(f"Estrategia: **{rut['info'].get('estrategia', 'Estándar')}**")
+            if not rut.get('sesiones'):
+                st.write("🎉 ¡Disfruta de tu descanso total! No hay sesiones de pesas programadas.")
+            for dia, ejes in rut.get('sesiones', {}).items():
+                with st.expander(f"📌 {dia}"):
+                    for ej in ejes: 
+                        st.write(f"**{ej['nombre']}** | {ej['series_num']} series")
+                        st.caption(f"Técnica: {ej['tips']}")
+        else:
+            st.warning("⚠️ Pulsa 'INICIAR LABORATORIO' de nuevo para generar la rutina correctamente.")
 
-    # NUEVA PESTAÑA: DIETA LINEAL
     with t_lineal:
         mostrar_dashboard_macros(st.session_state.macros_on, "Dieta Lineal (Mismo plan todos los días)")
         st.caption("💡 Esta opción es ideal si prefieres comer lo mismo cada día sin distinguir entre entrenamiento y descanso.")
@@ -278,7 +295,6 @@ else:
                 for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                 st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
 
-    # CAMBIO: Pestaña solo Lista (sin tienda)
     with t_lista:
         st.header("📋 Lista de la Compra")
         st.caption(f"Basada en tu planificación de {dias_entreno} días de entreno.")
@@ -294,7 +310,6 @@ else:
         else:
             st.warning("👈 Tu lista está vacía. Genera una dieta primero.")
 
-    # CAMBIO: Pestaña Nueva Tienda
     with t_tienda:
         st.header("🏪 Tienda Fitness")
         st.subheader("💪 Equipamiento y Suplementos (Recomendados)")
@@ -302,11 +317,8 @@ else:
         # Fila 1: Suplementos
         st.markdown("##### 💊 Suplementación")
         c1, c2, c3 = st.columns(3)
-        # ENLACE PROTEINA: Genérico con tu TAG (criptex02-21) para asegurar comisión
         link_prot = "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21" 
         with c1: st.link_button("🥛 Proteína", link_prot)
-        
-        # TUS ENLACES DE AFILIADO REALES:
         with c2: st.link_button("⚡ Creatina", "https://amzn.to/45TmMBh")
         with c3: st.link_button("🚀 Pre-Entreno", "https://amzn.to/4jIaIbM")
 
@@ -332,13 +344,11 @@ else:
         
         c1, c2 = st.columns(2)
         
-        # BOTÓN WHATSAPP
         with c1:
             whatsapp_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_plan)}"
             st.markdown(f'<a href="{whatsapp_url}" target="_blank" style="text-decoration: none;"><button style="background-color: #25D366; color: white; padding: 10px 24px; border: none; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold;">📱 Enviar por WhatsApp</button></a>', unsafe_allow_html=True)
             st.caption("Nota: Si el plan es muy largo, el botón de WhatsApp podría no abrirse. En ese caso, usa el botón de copiar de abajo.")
 
-        # BOTÓN EMAIL
         with c2:
             subject = urllib.parse.quote("Plan Semanal MacroLab")
             body = urllib.parse.quote(texto_plan)
