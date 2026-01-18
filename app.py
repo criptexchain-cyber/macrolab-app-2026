@@ -73,22 +73,18 @@ def calcular_macros_lineal(macros_on, macros_off, dias_entreno):
     """Calcula el promedio ponderado semanal EXACTO para la dieta lineal"""
     dias_descanso = 7 - dias_entreno
     
-    # Si entrenas 7 días, el lineal es igual al ON. Si entrenas 0, es igual al OFF.
     if dias_entreno == 7: return copy.deepcopy(macros_on)
     if dias_entreno == 0: return copy.deepcopy(macros_off)
 
-    # 1. Calcular Kcal Semanales Totales y dividir por 7 (Promedio)
     kcal_on = macros_on['total']
     kcal_off = macros_off['total']
     
     total_semanal = (kcal_on * dias_entreno) + (kcal_off * dias_descanso)
     diario_lineal = total_semanal / 7
     
-    # 2. Crear estructura copia
     res_lineal = copy.deepcopy(macros_on)
     res_lineal['total'] = diario_lineal
     
-    # 3. Ajustar Macros (Promedio Ponderado de cada macro)
     p_on, c_on, f_on = macros_on['macros_totales']['p'], macros_on['macros_totales']['c'], macros_on['macros_totales']['f']
     p_off, c_off, f_off = macros_off['macros_totales']['p'], macros_off['macros_totales']['c'], macros_off['macros_totales']['f']
     
@@ -96,8 +92,6 @@ def calcular_macros_lineal(macros_on, macros_off, dias_entreno):
     res_lineal['macros_totales']['c'] = int((c_on * dias_entreno + c_off * dias_descanso) / 7)
     res_lineal['macros_totales']['f'] = int((f_on * dias_entreno + f_off * dias_descanso) / 7)
     
-    # 4. Ajustar Comidas individuales (Reducir/Aumentar proporcionalmente respecto al día ON)
-    # Factor de corrección: Qué % representa el macro lineal respecto al macro ON
     ratio_c = res_lineal['macros_totales']['c'] / c_on if c_on > 0 else 1
     ratio_f = res_lineal['macros_totales']['f'] / f_on if f_on > 0 else 1
     
@@ -140,12 +134,10 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     dias_descanso = 7 - dias_entreno
     compra = defaultdict(float)
     
-    # Sumamos ingredientes ON
     for comida in menu_on.values():
         for item in comida['items']: 
             compra[item['nombre']] += item['gramos_peso'] * dias_entreno
             
-    # Sumamos ingredientes OFF
     for comida in menu_off.values():
         for item in comida['items']: 
             compra[item['nombre']] += item['gramos_peso'] * dias_descanso
@@ -239,8 +231,6 @@ with st.sidebar:
     # BOTÓN DE GENERAR
     if st.button("🚀 INICIAR LABORATORIO", use_container_width=True):
         st.session_state.generado = True
-        
-        # 1. LIMPIEZA DE ESTADO ANTERIOR (Crucial para evitar errores de 0g)
         st.session_state.lista_compra = {} 
         
         perfil = {
@@ -251,23 +241,18 @@ with st.sidebar:
             "hora_entreno": hora_entreno.strftime("%H:%M")
         }
         
-        # Cálculos de Dieta (Base ON y OFF)
         st.session_state.macros_on = calcular_macros(perfil)
         st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on)
-        
-        # CÁLCULO LINEAL MATEMÁTICO (MEDIA PONDERADA)
         st.session_state.macros_lineal = calcular_macros_lineal(
             st.session_state.macros_on, 
             st.session_state.macros_off, 
             dias_entreno
         )
         
-        # Creación de Menús
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
         st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_lineal, prohibidos)
         
-        # CÁLCULO SEGURO DE RUTINA
         if dias_entreno > 0:
             try:
                 st.session_state.rutina = generar_rutina(perfil)
@@ -281,37 +266,56 @@ with st.sidebar:
 
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
 
-    # --- LA NUEVA TIENDA DESPLEGABLE EN EL SIDEBAR ---
+    # --- TIENDA FITNESS (Todo Enlaces de Búsqueda) ---
     st.markdown("---")
     with st.expander("🏪 TIENDA FITNESS (Clic aquí)"):
         st.caption("Equipamiento recomendado por MacroLab")
         
-        # Sección Suplementos
+        # 1. SUPLEMENTOS
         st.markdown("**💊 Suplementación**")
+        # Proteína
         link_prot = "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21" 
         st.link_button("🥛 Proteína Whey", link_prot, use_container_width=True)
         
         col_s1, col_s2 = st.columns(2)
-        with col_s1: st.link_button("⚡ Creatina", "https://amzn.to/45TmMBh", use_container_width=True)
-        with col_s2: st.link_button("🚀 Pre-Entreno", "https://amzn.to/4jIaIbM", use_container_width=True)
+        # Creatina (Búsqueda)
+        link_creatina = "https://www.amazon.es/s?k=creatina+monohidrato&tag=criptex02-21"
+        with col_s1: st.link_button("⚡ Creatina", link_creatina, use_container_width=True)
+        
+        # Pre-entreno (Búsqueda)
+        link_pre = "https://www.amazon.es/s?k=pre+workout&tag=criptex02-21"
+        with col_s2: st.link_button("🚀 Pre-Entreno", link_pre, use_container_width=True)
 
         st.markdown("---")
         
-        # Sección Casa
+        # 2. GYM EN CASA
         st.markdown("**🏠 Gym en Casa**")
-        st.link_button("🏋️ Juego Mancuernas", "https://amzn.to/3No5YfC", use_container_width=True)
+        # Mancuernas (Búsqueda)
+        link_mancuernas = "https://www.amazon.es/s?k=juego+mancuernas&tag=criptex02-21"
+        st.link_button("🏋️ Juego Mancuernas", link_mancuernas, use_container_width=True)
         
         col_h1, col_h2 = st.columns(2)
-        with col_h1: st.link_button("🧘 Esterilla", "https://amzn.to/3YMLi3j", use_container_width=True)
-        with col_h2: st.link_button("🧶 Gomas", "https://amzn.to/3YKwKkI", use_container_width=True)
+        # Esterilla (Búsqueda)
+        link_esterilla = "https://www.amazon.es/s?k=esterilla+yoga&tag=criptex02-21"
+        with col_h1: st.link_button("🧘 Esterilla", link_esterilla, use_container_width=True)
+        
+        # Gomas (Búsqueda)
+        link_gomas = "https://www.amazon.es/s?k=bandas+elasticas+fitness&tag=criptex02-21"
+        with col_h2: st.link_button("🧶 Gomas", link_gomas, use_container_width=True)
         
         st.markdown("---")
 
-        # Sección Accesorios
+        # 3. ACCESORIOS
         st.markdown("**🎒 Accesorios Básicos**")
         col_a1, col_a2 = st.columns(2)
-        with col_a1: st.link_button("⚖️ Báscula", "https://amzn.to/45RIztd", use_container_width=True)
-        with col_a2: st.link_button("📏 Cinta", "https://amzn.to/4jIhIWe", use_container_width=True)
+        
+        # Báscula (Búsqueda)
+        link_bascula = "https://www.amazon.es/s?k=bascula+cocina+digital&tag=criptex02-21"
+        with col_a1: st.link_button("⚖️ Báscula", link_bascula, use_container_width=True)
+        
+        # Cinta (Búsqueda)
+        link_cinta = "https://www.amazon.es/s?k=cinta+metrica+costura&tag=criptex02-21"
+        with col_a2: st.link_button("📏 Cinta", link_cinta, use_container_width=True)
 
 
 # --- VISTA PRINCIPAL ---
@@ -396,7 +400,6 @@ else:
         if st.session_state.lista_compra:
             st.info("Marca las casillas mientras compras:")
             for item, cantidad in sorted(st.session_state.lista_compra.items()):
-                # FILTRO CLAVE: Si la cantidad es 0, no se muestra
                 if int(cantidad) > 0:
                     st.checkbox(f"**{item.title()}**: {int(cantidad)} g")
             
