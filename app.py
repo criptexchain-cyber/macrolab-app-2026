@@ -69,6 +69,37 @@ def calcular_macros_descanso(res_entreno):
         m['carb'] = int(m['carb'] * factor)
     return res_descanso
 
+def calcular_macros_lineal(macros_on, macros_off, dias_entreno):
+    """Calcula el promedio ponderado semanal para la dieta lineal"""
+    dias_descanso = 7 - dias_entreno
+    
+    # 1. Calcular Kcal Semanales Totales y dividir por 7
+    total_semanal = (macros_on['total'] * dias_entreno) + (macros_off['total'] * dias_descanso)
+    diario_lineal = total_semanal / 7
+    
+    # 2. Crear estructura copia
+    res_lineal = copy.deepcopy(macros_on)
+    res_lineal['total'] = diario_lineal
+    
+    # 3. Ajustar Macros (Promedio Ponderado)
+    p_on, c_on, f_on = macros_on['macros_totales']['p'], macros_on['macros_totales']['c'], macros_on['macros_totales']['f']
+    p_off, c_off, f_off = macros_off['macros_totales']['p'], macros_off['macros_totales']['c'], macros_off['macros_totales']['f']
+    
+    res_lineal['macros_totales']['p'] = int((p_on * dias_entreno + p_off * dias_descanso) / 7)
+    res_lineal['macros_totales']['c'] = int((c_on * dias_entreno + c_off * dias_descanso) / 7)
+    res_lineal['macros_totales']['f'] = int((f_on * dias_entreno + f_off * dias_descanso) / 7)
+    
+    # 4. Ajustar Comidas individuales (Factor de corrección respecto al día ON)
+    # Si el día ON tiene 200g carbos y el lineal sale 150g, reducimos un 25% todas las comidas
+    ratio_c = res_lineal['macros_totales']['c'] / c_on if c_on > 0 else 1
+    ratio_f = res_lineal['macros_totales']['f'] / f_on if f_on > 0 else 1
+    
+    for nombre, m in res_lineal['comidas'].items():
+        m['carb'] = int(m['carb'] * ratio_c)
+        m['fat'] = int(m['fat'] * ratio_f)
+        
+    return res_lineal
+
 def crear_menu_diario(datos_macros, prohibidos):
     menu = {}
     for nombre_comida, m in datos_macros['comidas'].items():
@@ -151,6 +182,7 @@ def generar_texto_plano(rutina, menu_on, menu_off, dias_entreno):
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'menu_on' not in st.session_state: st.session_state.menu_on = {}
 if 'menu_off' not in st.session_state: st.session_state.menu_off = {}
+if 'macros_lineal' not in st.session_state: st.session_state.macros_lineal = {}
 if 'menu_lineal' not in st.session_state: st.session_state.menu_lineal = {}
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
 if 'lista_compra' not in st.session_state: st.session_state.lista_compra = {}
@@ -201,12 +233,21 @@ with st.sidebar:
             "hora_entreno": hora_entreno.strftime("%H:%M")
         }
         
-        # Cálculos de Dieta
+        # Cálculos de Dieta (Base ON y OFF)
         st.session_state.macros_on = calcular_macros(perfil)
         st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on)
+        
+        # CÁLCULO LINEAL MATEMÁTICO (MEDIA PONDERADA)
+        st.session_state.macros_lineal = calcular_macros_lineal(
+            st.session_state.macros_on, 
+            st.session_state.macros_off, 
+            dias_entreno
+        )
+        
+        # Creación de Menús
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
-        st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_on, prohibidos)
+        st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_lineal, prohibidos)
         
         # CÁLCULO SEGURO DE RUTINA
         if dias_entreno > 0:
@@ -224,7 +265,6 @@ with st.sidebar:
 
     # --- LA NUEVA TIENDA DESPLEGABLE EN EL SIDEBAR ---
     st.markdown("---")
-    # AQUÍ ESTÁ EL CAMBIO: Usamos 'expander' para que esté cerrada por defecto
     with st.expander("🏪 TIENDA FITNESS (Clic aquí)"):
         st.caption("Equipamiento recomendado por MacroLab")
         
@@ -269,7 +309,6 @@ if not st.session_state.generado:
         st.markdown(f"<p style='text-align: center; font-size: 20px; color: gray;'>Sistema de Precisión Nutricional y Entrenamiento</p>", unsafe_allow_html=True)
         st.info("👈 Configura tus datos en el menú izquierdo para generar tu plan.")
         
-        # Mensaje extra para invitar a ver la tienda
         st.markdown("---")
         st.caption("👇 ¿Buscas equipamiento? Abre la TIENDA en la barra lateral izquierda.")
 
@@ -283,12 +322,10 @@ else:
         st.caption("Panel de Control Activo")
     st.markdown("---")
 
-    # PESTAÑAS (Ya no está la Tienda aquí)
     t_rutina, t_lineal, t_on, t_off, t_lista, t_share = st.tabs(["🏋️ RUTINA", "⚖️ LINEAL", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
     
     with t_rutina:
         rut = st.session_state.rutina
-        # PROTECCIÓN CONTRA ERRORES DE LECTURA
         if rut and 'info' in rut:
             st.info(f"Estrategia: **{rut['info'].get('estrategia', 'Estándar')}**")
             if not rut.get('sesiones'):
@@ -299,13 +336,14 @@ else:
                         st.write(f"**{ej['nombre']}** | {ej['series_num']} series")
                         st.caption(f"Técnica: {ej['tips']}")
         else:
-            st.warning("⚠️ Pulsa 'INICIAR LABORATORIO' de nuevo para generar la rutina correctamente.")
+            st.warning("⚠️ Pulsa 'INICIAR LABORATORIO' de nuevo.")
 
     with t_lineal:
-        mostrar_dashboard_macros(st.session_state.macros_on, "Dieta Lineal (Mismo plan todos los días)")
-        st.caption("💡 Esta opción es ideal si prefieres comer lo mismo cada día sin distinguir entre entrenamiento y descanso.")
+        # AQUÍ AHORA SE MUESTRA EL PROMEDIO REAL
+        mostrar_dashboard_macros(st.session_state.macros_lineal, "Dieta Lineal (Promedio Semanal Constante)")
+        st.caption("💡 Esta dieta mantiene el equilibrio calórico semanal comiendo lo mismo todos los días.")
         if st.button("🔄 Generar Nuevo Menú Lineal"):
-            st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_on, prohibidos)
+            st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_lineal, prohibidos)
             st.rerun()
         for nombre, datos in st.session_state.menu_lineal.items():
             with st.expander(f"🍽️ {nombre.upper()}"):
