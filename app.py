@@ -222,37 +222,38 @@ with st.sidebar:
 
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
 
-    # --- LA NUEVA TIENDA EN EL SIDEBAR ---
+    # --- LA NUEVA TIENDA DESPLEGABLE EN EL SIDEBAR ---
     st.markdown("---")
-    st.header("🏪 Tienda Fitness")
-    st.caption("Equipamiento recomendado por MacroLab")
-    
-    # Sección Suplementos
-    st.markdown("**💊 Suplementación**")
-    link_prot = "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21" 
-    st.link_button("🥛 Proteína Whey", link_prot, use_container_width=True)
-    
-    col_s1, col_s2 = st.columns(2)
-    with col_s1: st.link_button("⚡ Creatina", "https://amzn.to/45TmMBh", use_container_width=True)
-    with col_s2: st.link_button("🚀 Pre-Entreno", "https://amzn.to/4jIaIbM", use_container_width=True)
+    # AQUÍ ESTÁ EL CAMBIO: Usamos 'expander' para que esté cerrada por defecto
+    with st.expander("🏪 TIENDA FITNESS (Clic aquí)"):
+        st.caption("Equipamiento recomendado por MacroLab")
+        
+        # Sección Suplementos
+        st.markdown("**💊 Suplementación**")
+        link_prot = "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21" 
+        st.link_button("🥛 Proteína Whey", link_prot, use_container_width=True)
+        
+        col_s1, col_s2 = st.columns(2)
+        with col_s1: st.link_button("⚡ Creatina", "https://amzn.to/45TmMBh", use_container_width=True)
+        with col_s2: st.link_button("🚀 Pre-Entreno", "https://amzn.to/4jIaIbM", use_container_width=True)
 
-    st.markdown("---")
-    
-    # Sección Casa
-    st.markdown("**🏠 Gym en Casa**")
-    st.link_button("🏋️ Juego Mancuernas", "https://amzn.to/3No5YfC", use_container_width=True)
-    
-    col_h1, col_h2 = st.columns(2)
-    with col_h1: st.link_button("🧘 Esterilla", "https://amzn.to/3YMLi3j", use_container_width=True)
-    with col_h2: st.link_button("🧶 Gomas", "https://amzn.to/3YKwKkI", use_container_width=True)
-    
-    st.markdown("---")
+        st.markdown("---")
+        
+        # Sección Casa
+        st.markdown("**🏠 Gym en Casa**")
+        st.link_button("🏋️ Juego Mancuernas", "https://amzn.to/3No5YfC", use_container_width=True)
+        
+        col_h1, col_h2 = st.columns(2)
+        with col_h1: st.link_button("🧘 Esterilla", "https://amzn.to/3YMLi3j", use_container_width=True)
+        with col_h2: st.link_button("🧶 Gomas", "https://amzn.to/3YKwKkI", use_container_width=True)
+        
+        st.markdown("---")
 
-    # Sección Accesorios
-    st.markdown("**🎒 Accesorios Básicos**")
-    col_a1, col_a2 = st.columns(2)
-    with col_a1: st.link_button("⚖️ Báscula", "https://amzn.to/45RIztd", use_container_width=True)
-    with col_a2: st.link_button("📏 Cinta", "https://amzn.to/4jIhIWe", use_container_width=True)
+        # Sección Accesorios
+        st.markdown("**🎒 Accesorios Básicos**")
+        col_a1, col_a2 = st.columns(2)
+        with col_a1: st.link_button("⚖️ Báscula", "https://amzn.to/45RIztd", use_container_width=True)
+        with col_a2: st.link_button("📏 Cinta", "https://amzn.to/4jIhIWe", use_container_width=True)
 
 
 # --- VISTA PRINCIPAL ---
@@ -270,7 +271,7 @@ if not st.session_state.generado:
         
         # Mensaje extra para invitar a ver la tienda
         st.markdown("---")
-        st.caption("👇 ¿Buscas equipamiento? Echa un vistazo a la tienda en la barra lateral izquierda.")
+        st.caption("👇 ¿Buscas equipamiento? Abre la TIENDA en la barra lateral izquierda.")
 
 else:
     col_logo, col_titulo = st.columns([1, 5])
