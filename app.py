@@ -101,6 +101,8 @@ def crear_menu_diario(datos_macros, prohibidos):
 def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     dias_descanso = 7 - dias_entreno
     compra = defaultdict(float)
+    # Nota: Si se usa dieta lineal, la lista debería ajustarse, pero mantenemos la lógica mixta por defecto
+    # para asegurar variedad en la compra.
     for comida in menu_on.values():
         for item in comida['items']: compra[item['nombre']] += item['gramos_peso'] * dias_entreno
     for comida in menu_off.values():
@@ -123,14 +125,14 @@ def generar_texto_plano(rutina, menu_on, menu_off, dias_entreno):
     txt = f"*PLAN MACROLAB - SEMANAL*\n"
     txt += f"========================\n\n"
     
-    txt += f"*🔥 DIETA ENTRENAMIENTO*\n"
+    txt += f"*🔥 DIETA ENTRENAMIENTO / LINEAL*\n"
     for nombre, datos in menu_on.items():
         txt += f"_{nombre.upper()}_\n"
         for item in datos['items']:
             txt += f"- {item['nombre']}: {item['gramos_peso']}g\n"
         txt += "\n"
         
-    txt += f"*💤 DIETA DESCANSO*\n"
+    txt += f"*💤 DIETA DESCANSO (Opcional si ciclas)*\n"
     for nombre, datos in menu_off.items():
         txt += f"_{nombre.upper()}_\n"
         for item in datos['items']:
@@ -150,6 +152,7 @@ def generar_texto_plano(rutina, menu_on, menu_off, dias_entreno):
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'menu_on' not in st.session_state: st.session_state.menu_on = {}
 if 'menu_off' not in st.session_state: st.session_state.menu_off = {}
+if 'menu_lineal' not in st.session_state: st.session_state.menu_lineal = {} # Nuevo estado para lineal
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -174,7 +177,8 @@ with st.sidebar:
 
     st.subheader("🎯 Meta")
     obj_txt = st.selectbox("Objetivo", ["1. Perder Grasa", "2. Ganar Músculo", "3. Mantener"])
-    dias_entreno = st.slider("Días Gym/Semana", 3, 6, 4)
+    # CAMBIO: Slider de 0 a 7 días
+    dias_entreno = st.slider("Días Gym/Semana", 0, 7, 4)
     hora_entreno = st.time_input("Hora Entreno", datetime.time(18, 00))
     
     st.subheader("🍽️ Dieta")
@@ -194,10 +198,14 @@ with st.sidebar:
             "dias_entreno": dias_entreno, "horas_sueno": horas_sueno,
             "hora_entreno": hora_entreno.strftime("%H:%M")
         }
-        st.session_state.macros_on = calcular_macros(perfil)
-        st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on)
+        # Cálculos
+        st.session_state.macros_on = calcular_macros(perfil) # Base
+        st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on) # Descanso
+        # Menús
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
+        st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_on, prohibidos) # Usamos la base para lineal
+        
         st.session_state.rutina = generar_rutina(perfil)
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
 
@@ -224,7 +232,8 @@ else:
         st.caption("Panel de Control Activo")
     st.markdown("---")
 
-    t_rutina, t_on, t_off, t_compra, t_share = st.tabs(["🏋️ RUTINA", "🔥 MENÚ ON", "💤 MENÚ OFF", "🛒 COMPRA", "📤 COMPARTIR"])
+    # CAMBIO: Nuevas pestañas y orden actualizado
+    t_rutina, t_lineal, t_on, t_off, t_lista, t_tienda, t_share = st.tabs(["🏋️ RUTINA", "⚖️ LINEAL", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "🏪 TIENDA", "📤 COMPARTIR"])
     
     with t_rutina:
         rut = st.session_state.rutina
@@ -235,8 +244,21 @@ else:
                     st.write(f"**{ej['nombre']}** | {ej['series_num']} series")
                     st.caption(f"Técnica: {ej['tips']}")
 
+    # NUEVA PESTAÑA: DIETA LINEAL
+    with t_lineal:
+        mostrar_dashboard_macros(st.session_state.macros_on, "Dieta Lineal (Mismo plan todos los días)")
+        st.caption("💡 Esta opción es ideal si prefieres comer lo mismo cada día sin distinguir entre entrenamiento y descanso.")
+        if st.button("🔄 Generar Nuevo Menú Lineal"):
+            st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_on, prohibidos)
+            st.rerun()
+        for nombre, datos in st.session_state.menu_lineal.items():
+            with st.expander(f"🍽️ {nombre.upper()}"):
+                for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
+                st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
+
     with t_on:
         mostrar_dashboard_macros(st.session_state.macros_on, "Día de Entrenamiento (High Carb)")
+        st.caption("💡 Usa este menú los días que vayas al gimnasio.")
         if st.button("🔄 Cambiar Comidas (ON)"):
             st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
             st.rerun()
@@ -247,6 +269,7 @@ else:
 
     with t_off:
         mostrar_dashboard_macros(st.session_state.macros_off, "Día de Descanso (Low Carb)")
+        st.caption("💡 Usa este menú los días que NO entrenes.")
         if st.button("🔄 Cambiar Comidas (OFF)"):
             st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
             st.rerun()
@@ -255,11 +278,11 @@ else:
                 for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                 st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
 
-    with t_compra:
-        st.header("🛒 Tu Lista y Tienda Fitness")
+    # CAMBIO: Pestaña solo Lista (sin tienda)
+    with t_lista:
+        st.header("📋 Lista de la Compra")
+        st.caption(f"Basada en tu planificación de {dias_entreno} días de entreno.")
         
-        # --- PARTE 1: LA LISTA ---
-        st.subheader("📋 Ingredientes Necesarios")
         if st.session_state.lista_compra:
             st.info("Marca las casillas mientras compras:")
             for item, cantidad in sorted(st.session_state.lista_compra.items()):
@@ -271,9 +294,9 @@ else:
         else:
             st.warning("👈 Tu lista está vacía. Genera una dieta primero.")
 
-        st.divider()
-
-        # --- PARTE 2: LA TIENDA ---
+    # CAMBIO: Pestaña Nueva Tienda
+    with t_tienda:
+        st.header("🏪 Tienda Fitness")
         st.subheader("💪 Equipamiento y Suplementos (Recomendados)")
         
         # Fila 1: Suplementos
@@ -328,7 +351,3 @@ else:
 
     st.divider()
     st.warning("⚠️ **Descargo de Responsabilidad:** Esta aplicación es una herramienta educativa. Consulta a un profesional antes de empezar.")
-
-
-  
-
