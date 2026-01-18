@@ -153,6 +153,7 @@ if 'menu_on' not in st.session_state: st.session_state.menu_on = {}
 if 'menu_off' not in st.session_state: st.session_state.menu_off = {}
 if 'menu_lineal' not in st.session_state: st.session_state.menu_lineal = {}
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
+if 'lista_compra' not in st.session_state: st.session_state.lista_compra = {}
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -178,7 +179,6 @@ with st.sidebar:
     st.subheader("🎯 Meta")
     obj_txt = st.selectbox("Objetivo", ["1. Perder Grasa", "2. Ganar Músculo", "3. Mantener"])
     
-    # SLIDER 0-7 DIAS
     dias_entreno = st.slider("Días Gym/Semana", 0, 7, 4)
     hora_entreno = st.time_input("Hora Entreno", datetime.time(18, 00))
     
@@ -190,6 +190,7 @@ with st.sidebar:
     hora_wake = st.time_input("Hora Despertar", datetime.time(7, 30))
     horas_sueno = calcular_horas_sueno(hora_bed, hora_wake)
     
+    # BOTÓN DE GENERAR
     if st.button("🚀 INICIAR LABORATORIO", use_container_width=True):
         st.session_state.generado = True
         perfil = {
@@ -207,20 +208,52 @@ with st.sidebar:
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
         st.session_state.menu_lineal = crear_menu_diario(st.session_state.macros_on, prohibidos)
         
-        # CÁLCULO SEGURO DE RUTINA (Evita error con 0 días)
+        # CÁLCULO SEGURO DE RUTINA
         if dias_entreno > 0:
             try:
                 st.session_state.rutina = generar_rutina(perfil)
             except:
                 st.session_state.rutina = {'info': {'estrategia': 'Error calculando rutina'}, 'sesiones': {}}
         else:
-            # Si son 0 días, creamos una rutina "ficticia" de descanso
             st.session_state.rutina = {
                 'info': {'estrategia': 'Descanso Total / Recuperación'},
                 'sesiones': {}
             }
 
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
+
+    # --- LA NUEVA TIENDA EN EL SIDEBAR ---
+    st.markdown("---")
+    st.header("🏪 Tienda Fitness")
+    st.caption("Equipamiento recomendado por MacroLab")
+    
+    # Sección Suplementos
+    st.markdown("**💊 Suplementación**")
+    link_prot = "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21" 
+    st.link_button("🥛 Proteína Whey", link_prot, use_container_width=True)
+    
+    col_s1, col_s2 = st.columns(2)
+    with col_s1: st.link_button("⚡ Creatina", "https://amzn.to/45TmMBh", use_container_width=True)
+    with col_s2: st.link_button("🚀 Pre-Entreno", "https://amzn.to/4jIaIbM", use_container_width=True)
+
+    st.markdown("---")
+    
+    # Sección Casa
+    st.markdown("**🏠 Gym en Casa**")
+    st.link_button("🏋️ Juego Mancuernas", "https://amzn.to/3No5YfC", use_container_width=True)
+    
+    col_h1, col_h2 = st.columns(2)
+    with col_h1: st.link_button("🧘 Esterilla", "https://amzn.to/3YMLi3j", use_container_width=True)
+    with col_h2: st.link_button("🧶 Gomas", "https://amzn.to/3YKwKkI", use_container_width=True)
+    
+    st.markdown("---")
+
+    # Sección Accesorios
+    st.markdown("**🎒 Accesorios Básicos**")
+    col_a1, col_a2 = st.columns(2)
+    with col_a1: st.link_button("⚖️ Báscula", "https://amzn.to/45RIztd", use_container_width=True)
+    with col_a2: st.link_button("📏 Cinta", "https://amzn.to/4jIhIWe", use_container_width=True)
+
 
 # --- VISTA PRINCIPAL ---
 
@@ -234,6 +267,10 @@ if not st.session_state.generado:
         st.markdown(f"<h1 style='text-align: center;'>{NOMBRE_APP}</h1>", unsafe_allow_html=True)
         st.markdown(f"<p style='text-align: center; font-size: 20px; color: gray;'>Sistema de Precisión Nutricional y Entrenamiento</p>", unsafe_allow_html=True)
         st.info("👈 Configura tus datos en el menú izquierdo para generar tu plan.")
+        
+        # Mensaje extra para invitar a ver la tienda
+        st.markdown("---")
+        st.caption("👇 ¿Buscas equipamiento? Echa un vistazo a la tienda en la barra lateral izquierda.")
 
 else:
     col_logo, col_titulo = st.columns([1, 5])
@@ -245,7 +282,8 @@ else:
         st.caption("Panel de Control Activo")
     st.markdown("---")
 
-    t_rutina, t_lineal, t_on, t_off, t_lista, t_tienda, t_share = st.tabs(["🏋️ RUTINA", "⚖️ LINEAL", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "🏪 TIENDA", "📤 COMPARTIR"])
+    # PESTAÑAS (Ya no está la Tienda aquí)
+    t_rutina, t_lineal, t_on, t_off, t_lista, t_share = st.tabs(["🏋️ RUTINA", "⚖️ LINEAL", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
     
     with t_rutina:
         rut = st.session_state.rutina
@@ -309,34 +347,6 @@ else:
                 st.rerun()
         else:
             st.warning("👈 Tu lista está vacía. Genera una dieta primero.")
-
-    with t_tienda:
-        st.header("🏪 Tienda Fitness")
-        st.subheader("💪 Equipamiento y Suplementos (Recomendados)")
-        
-        # Fila 1: Suplementos
-        st.markdown("##### 💊 Suplementación")
-        c1, c2, c3 = st.columns(3)
-        link_prot = "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21" 
-        with c1: st.link_button("🥛 Proteína", link_prot)
-        with c2: st.link_button("⚡ Creatina", "https://amzn.to/45TmMBh")
-        with c3: st.link_button("🚀 Pre-Entreno", "https://amzn.to/4jIaIbM")
-
-        # Fila 2: Casa
-        st.markdown("##### 🏠 Gym en Casa")
-        c4, c5, c6 = st.columns(3)
-        with c4: st.link_button("🏋️ Mancuernas", "https://amzn.to/3No5YfC")
-        with c5: st.link_button("🧘 Esterilla", "https://amzn.to/3YMLi3j")
-        with c6: st.link_button("🧶 Gomas", "https://amzn.to/3YKwKkI")
-
-        # Fila 3: Accesorios
-        st.markdown("##### 🎒 Accesorios")
-        c7, c8 = st.columns(2)
-        with c7: st.link_button("⚖️ Báscula", "https://amzn.to/45RIztd")
-        with c8: st.link_button("📏 Cinta", "https://amzn.to/4jIhIWe")
-        
-        st.divider()
-        st.caption("Nota: Comprando aquí apoyas a MacroLab.")
 
     with t_share:
         st.markdown("### 📤 Enviar Plan")
