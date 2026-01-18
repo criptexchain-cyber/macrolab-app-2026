@@ -10,12 +10,7 @@ from calculadora import calcular_macros
 from generador import buscar_alimento_perfecto
 from entrenador import generar_rutina
 
-# --- ZONA DE CONEXIÓN CON GOOGLE ---
-codigo_adsense = """<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9041000863577990"
-     crossorigin="anonymous"></script>
-"""
-components.html(codigo_adsense, height=0)
-# -----------------------------------
+# --- (SECCIÓN GOOGLE ELIMINADA PARA OPTIMIZAR) ---
 
 # --- 🔧 ARREGLO DE RUTA ---
 try:
