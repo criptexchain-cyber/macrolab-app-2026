@@ -259,8 +259,8 @@ else:
     with t_compra:
         st.header("🛒 Tu Lista y Tienda Fitness")
         
-        # --- PARTE 1: LA LISTA ---
-        st.subheader("📋 Ingredientes Necesarios")
+        # --- SECCIÓN 1: LISTA DE LA COMPRA (Ingredientes) ---
+        st.subheader("📋 Ingredientes Dieta")
         if st.session_state.lista_compra:
             st.info("Marca las casillas mientras compras:")
             for item, cantidad in sorted(st.session_state.lista_compra.items()):
@@ -270,35 +270,95 @@ else:
                 st.session_state.lista_compra = {}
                 st.rerun()
         else:
-            st.warning("👈 Tu lista está vacía. Genera una dieta primero.")
+            st.warning("👈 Tu lista está vacía. Genera primero la dieta.")
 
         st.divider()
 
-        # --- PARTE 2: LA TIENDA ---
-        st.subheader("💪 Equipamiento y Suplementos")
-        
-        # Fila 1: Suplementos
-        st.markdown("##### 💊 Suplementación")
-        c1, c2, c3 = st.columns(3)
-        with c1: st.link_button("🥛 Proteína", "https://www.amazon.es/s?k=proteina+whey")
-        with c2: st.link_button("⚡ Creatina", "https://www.amazon.es/s?k=creatina+monohidrato")
-        with c3: st.link_button("🚀 Pre-Entreno", "https://www.amazon.es/s?k=pre+workout")
+        # --- SECCIÓN 2: LA SUPER TIENDA (Tus Enlaces) ---
+        st.subheader("💪 Equipamiento y Suplementos Recomendados")
+        st.markdown("Selección de las mejores ofertas calidad/precio para tu transformación:")
 
-        # Fila 2: Casa
-        st.markdown("##### 🏠 Gym en Casa")
-        c4, c5, c6 = st.columns(3)
-        with c4: st.link_button("🏋️ Mancuernas", "https://www.amazon.es/s?k=juego+mancuernas")
-        with c5: st.link_button("🧘 Esterilla", "https://www.amazon.es/s?k=esterilla+yoga")
-        with c6: st.link_button("🧶 Gomas", "https://www.amazon.es/s?k=bandas+elasticas")
-
-        # Fila 3: Accesorios
-        st.markdown("##### 🎒 Accesorios")
-        c7, c8 = st.columns(2)
-        with c7: st.link_button("⚖️ Báscula", "https://www.amazon.es/s?k=bascula+cocina+digital")
-        with c8: st.link_button("📏 Cinta", "https://www.amazon.es/s?k=cinta+metrica")
+        # 1. CREATINA (7 Enlaces)
+        st.markdown("##### ⚡ Creatina (Monohidrato / Creapure)")
+        c_cr1, c_cr2, c_cr3 = st.columns(3)
+        with c_cr1: st.link_button("🏆 Top Ventas", "https://amzn.to/45TmMBh")
+        with c_cr2: st.link_button("💎 Calidad Premium", "https://amzn.to/4qC46hV")
+        with c_cr3: st.link_button("💸 Mejor Precio", "https://amzn.to/4pIBMsU")
         
+        c_cr4, c_cr5, c_cr6, c_cr7 = st.columns(4)
+        with c_cr4: st.link_button("Opción A", "https://amzn.to/49HodUu")
+        with c_cr5: st.link_button("Opción B", "https://amzn.to/4qokLFv")
+        with c_cr6: st.link_button("Opción C", "https://amzn.to/4jIgBpw")
+        with c_cr7: st.link_button("Opción D", "https://amzn.to/4jLJgKd")
+
+        # 2. PRE-ENTRENO (4 Enlaces)
+        st.markdown("##### 🚀 Pre-Entreno (Energía)")
+        c_pre1, c_pre2, c_pre3, c_pre4 = st.columns(4)
+        with c_pre1: st.link_button("🔥 Potencia Máxima", "https://amzn.to/4jIaIbM")
+        with c_pre2: st.link_button("⚡ Energía Rápida", "https://amzn.to/4qvf0pM")
+        with c_pre3: st.link_button("🧠 Enfoque", "https://amzn.to/49Z2glc")
+        with c_pre4: st.link_button("🍬 Sabor Top", "https://amzn.to/3NRlH6Q")
+
         st.divider()
-        st.caption("Nota: Comprando aquí apoyas a MacroLab.")
+
+        # 3. MANCUERNAS (9 Enlaces - Grid de 3x3)
+        st.markdown("##### 🏋️ Mancuernas y Pesas")
+        col_m1, col_m2, col_m3 = st.columns(3)
+        with col_m1: 
+            st.link_button("Juego Ajustable 1", "https://amzn.to/3No5YfC")
+            st.link_button("Set Neopreno", "https://amzn.to/49FK1zZ")
+            st.link_button("Pesas Rusas", "https://amzn.to/4pLAP30")
+        with col_m2: 
+            st.link_button("Juego Ajustable 2", "https://amzn.to/49tminW")
+            st.link_button("Hexagonales Pro", "https://amzn.to/3YOIeUi")
+            st.link_button("Set Completo", "https://amzn.to/49WqHzP")
+        with col_m3: 
+            st.link_button("Opción Económica", "https://amzn.to/3LL2KCa")
+            st.link_button("Heavy Duty", "https://amzn.to/4r5giaZ")
+            st.link_button("Kit Iniciación", "https://amzn.to/3LNM6lw")
+
+        # 4. ESTERILLAS (4 Enlaces)
+        st.markdown("##### 🧘 Esterillas y Mats")
+        c_mat1, c_mat2, c_mat3, c_mat4 = st.columns(4)
+        with c_mat1: st.link_button("☁️ Extra Gruesa", "https://amzn.to/3YMLi3j")
+        with c_mat2: st.link_button("🛡️ Antideslizante", "https://amzn.to/3NrEANF")
+        with c_mat3: st.link_button("🧘 Yoga Pro", "https://amzn.to/3NsdA0u")
+        with c_mat4: st.link_button("🎒 Con Correa", "https://amzn.to/4jNlFZU")
+
+        st.divider()
+
+        # 5. GOMAS, BÁSCULAS Y CINTAS (Mix)
+        c_mix1, c_mix2 = st.columns(2)
+        
+        with c_mix1:
+            st.markdown("##### 🧶 Gomas Elásticas")
+            st.link_button("Set 5 Niveles", "https://amzn.to/3YKwKkI")
+            st.link_button("Bandas de Tela", "https://amzn.to/4pKGaI4")
+            st.link_button("Tubos Resistencia", "https://amzn.to/4b6bGN4")
+            st.link_button("Kit Viaje", "https://amzn.to/3YH9rbx")
+            st.link_button("Mini Bands", "https://amzn.to/3NoHeDY")
+
+        with c_mix2:
+            st.markdown("##### ⚖️ Control y Medición")
+            # Básculas
+            c_b1, c_b2 = st.columns(2)
+            with c_b1: st.link_button("⚖️ Báscula Digital", "https://amzn.to/45RIztd")
+            with c_b2: st.link_button("🥈 Opción Plata", "https://amzn.to/4sR2kLA")
+            
+            c_b3, c_b4 = st.columns(2)
+            with c_b3: st.link_button("🥉 Opción Acero", "https://amzn.to/4sHwTDn")
+            with c_b4: st.link_button("💎 Alta Precisión", "https://amzn.to/45fA3E9")
+            
+            st.link_button("🥣 Con Bol Incluido", "https://amzn.to/4jIbDZM")
+            
+            # Cintas
+            st.caption("---")
+            c_cm1, c_cm2 = st.columns(2)
+            with c_cm1: st.link_button("📏 Cinta Corporal", "https://amzn.to/4jIhIWe")
+            with c_cm2: st.link_button("🔄 Cinta Retráctil", "https://amzn.to/49Fx9dc")
+
+        st.divider()
+        st.caption("Nota: MacroLab selecciona las mejores ofertas de Amazon para ti.")
 
     with t_share:
         st.markdown("### 📤 Enviar Plan")
@@ -325,5 +385,6 @@ else:
 
     st.divider()
     st.warning("⚠️ **Descargo de Responsabilidad:** Esta aplicación es una herramienta educativa. Consulta a un profesional antes de empezar.")
+
 
   
