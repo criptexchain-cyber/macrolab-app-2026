@@ -4,6 +4,7 @@ import datetime
 import random
 import copy
 import urllib.parse
+import pandas as pd  # Necesario para la tabla bonita
 from collections import defaultdict
 
 # --- CONFIGURACIÓN SEO ---
@@ -42,14 +43,13 @@ DB_ALIMENTOS = [
 def buscar_alimento(tipo, gramos_macro, perfil_plato, prohibidos=[]):
     candidatos = [a for a in DB_ALIMENTOS if a['tipo'] == tipo]
     
-    # Filtrado básico de alergias
     if prohibidos:
         for p in prohibidos:
             if p == "leche": candidatos = [x for x in candidatos if x['nombre'] not in ["Yogur Griego 0%", "Proteína Whey"]]
             elif p == "huevo": candidatos = [x for x in candidatos if "Huevo" not in x['nombre']]
             elif p == "gluten": candidatos = [x for x in candidatos if x['nombre'] not in ["Pasta Integral", "Pan Integral", "Avena"]]
             elif p == "pescado": candidatos = [x for x in candidatos if x['nombre'] not in ["Merluza", "Atún al Natural"]]
-            elif p == "frutos secos" or p == "cacahuete": candidatos = [x for x in candidatos if x['nombre'] not in ["Frutos Secos", "Crema de Cacahuete"]]
+            elif p == "cacahuete": candidatos = [x for x in candidatos if x['nombre'] not in ["Frutos Secos", "Crema de Cacahuete"]]
             
     if perfil_plato != "neutro":
         candidatos = [a for a in candidatos if a['perfil'] in [perfil_plato, "neutro"]]
@@ -192,7 +192,6 @@ def generar_rutina_inteligente(perfil):
     dias = perfil['dias_entreno']
     nivel = perfil['nivel']
     
-    # Configuración por Nivel
     config_nivel = {
         "Principiante": {"rir": "3-4", "tempo": "2-0-2-0"},
         "Intermedio":   {"rir": "2-3", "tempo": "3-0-1-0"},
@@ -226,20 +225,18 @@ def generar_rutina_inteligente(perfil):
         detalles_dia = []
         for ej in ejercicios_base:
             grupo = db_ejercicios.get(ej, "General")
-            # AJUSTE POR NIVEL
-            if nivel == "Principiante":
-                series = 3
-            elif nivel == "Avanzado":
-                series = 5
-            else:
-                series = 4
-                
+            series = 3 if nivel == "Principiante" else (5 if nivel == "Avanzado" else 4)
             rutina_final['volumen_total'][grupo] += series
             
+            # Guardamos como diccionario simple para DataFrame
             detalles_dia.append({
-                'nombre': ej, 'series': series, 'repes': '8-12', 
-                'rir': cfg['rir'], 'tempo': cfg['tempo']
+                'Ejercicio': ej, 
+                'Series': series, 
+                'Repes': '8-12', 
+                'RIR': cfg['rir'], 
+                'Tempo': cfg['tempo']
             })
+            
         rutina_final['sesiones'][f"Día {i+1} ({nombre_dia})"] = detalles_dia
 
     return rutina_final
@@ -250,7 +247,7 @@ def generar_texto_plano(rutina, menu_on, menu_off):
     for dia, ejercicios in rutina.get('sesiones', {}).items():
         txt += f"\n📌 *{dia.upper()}*\n"
         for ej in ejercicios:
-            txt += f"- {ej['nombre']} | {ej['series']}x{ej['repes']} | RIR:{ej['rir']}\n"
+            txt += f"- {ej['Ejercicio']} | {ej['Series']}x{ej['Repes']} | RIR:{ej['RIR']}\n"
     txt += "\n*🔥 DIETA ON (Entreno)*\n"
     for comida, datos in menu_on.items():
         txt += f"_{comida}_: "
@@ -293,18 +290,12 @@ with st.sidebar:
     intensidad = st.select_slider("Ritmo", options=["Lento (Conservador)", "Estándar", "Rápido (Agresivo)"], value="Estándar")
     
     st.markdown("---")
-    # CONFIGURACIÓN GYM (AQUÍ ESTÁ EL CAMBIO SOLICITADO)
     st.caption("🏋️ Configuración Entreno")
     dias_entreno = st.slider("Días Gym/Semana", 0, 7, 4)
-    
-    # --- NUEVO SELECTOR DE EXPERIENCIA (ENTRE DÍAS Y HORA) ---
     nivel_exp = st.selectbox("Nivel de Experiencia", ["Principiante", "Intermedio", "Avanzado"])
-    # --------------------------------------------------------
-    
     hora_entreno = st.time_input("Hora Entreno", datetime.time(18, 00))
     
     st.markdown("---")
-    # DIETA (RESTAURADA COMPLETA)
     st.caption("🍽️ Configuración Dieta")
     n_comidas = st.number_input("Comidas/día", 2, 6, 4)
     prohibidos = st.multiselect("🚫 Alergias", ["leche", "huevo", "gluten", "pescado", "cacahuete"])
@@ -318,7 +309,7 @@ with st.sidebar:
             "gender": "male" if genero=="Hombre" else "female",
             "activity": actividad, "goal": obj_txt[0], "intensity": intensidad,
             "num_comidas": n_comidas, "dias_entreno": dias_entreno, 
-            "nivel": nivel_exp # Pasamos el nivel
+            "nivel": nivel_exp
         }
         st.session_state.perfil = perfil
         st.session_state.macros_on = calcular_macros(perfil)
@@ -349,34 +340,47 @@ else:
     st.title("🔬 Panel de Control")
     tabs = st.tabs(["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
     
+    # 1. RUTINA MEJORADA (TABLA LIMPIA)
     with tabs[0]:
         rut = st.session_state.rutina
         if not rut.get('sesiones'):
             st.warning("Sin entrenamiento.")
         else:
-            col1, col2 = st.columns(2)
-            col1.info(f"Nivel: {st.session_state.perfil['nivel']}")
-            col2.info(f"Ritmo: {st.session_state.perfil['intensity']}")
+            c1, c2 = st.columns(2)
+            c1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
+            c2.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
             
             for dia, ejercicios in rut['sesiones'].items():
                 with st.expander(f"📌 {dia}", expanded=True):
-                    c1, c2, c3, c4, c5 = st.columns([3,1,1,1,1])
-                    c1.markdown("**Ejercicio**"); c2.markdown("**Sets**"); c3.markdown("**Reps**")
-                    c4.markdown("**RIR**"); c5.markdown("**Tempo**")
-                    st.divider()
-                    for ej in ejercicios:
-                        c1, c2, c3, c4, c5 = st.columns([3,1,1,1,1])
-                        c1.write(ej['nombre'])
-                        c2.write(f"{ej['series']}")
-                        c3.write(ej['repes'])
-                        c4.write(ej['rir'])
-                        c5.write(ej['tempo'])
+                    # AQUÍ ESTÁ LA SOLUCIÓN: Dataframe en vez de columnas
+                    df_rutina = pd.DataFrame(ejercicios)
+                    st.dataframe(
+                        df_rutina, 
+                        hide_index=True, 
+                        use_container_width=True,
+                        column_config={
+                            "Ejercicio": st.column_config.TextColumn("Ejercicio", width="medium"),
+                            "Series": st.column_config.TextColumn("Series", width="small"),
+                            "Repes": st.column_config.TextColumn("Reps", width="small"),
+                            "RIR": st.column_config.TextColumn("RIR", width="small"),
+                            "Tempo": st.column_config.TextColumn("Tempo", width="small")
+                        }
+                    )
             
             st.markdown("### 📊 Volumen Semanal")
-            st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True)
+            st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
+    # 2. DÍA ON (MACROS RESTAURADOS)
     with tabs[1]:
-        st.metric("Kcal Entrenamiento", int(st.session_state.macros_on['total']))
+        m = st.session_state.macros_on
+        # BLOQUE DE MACROS VISUAL
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("🔥 KCAL", int(m['total']))
+        col2.metric("🥩 PROTEÍNA", f"{m['macros_totales']['p']}g")
+        col3.metric("🍚 CARBOS", f"{m['macros_totales']['c']}g")
+        col4.metric("🥑 GRASAS", f"{m['macros_totales']['f']}g")
+        st.divider()
+
         if st.button("🔄 Nuevo Menú ON"):
             st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
             st.rerun()
@@ -387,8 +391,17 @@ else:
                     st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                 st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
 
+    # 3. DÍA OFF (MACROS RESTAURADOS)
     with tabs[2]:
-        st.metric("Kcal Descanso", int(st.session_state.macros_off['total']))
+        m = st.session_state.macros_off
+        # BLOQUE DE MACROS VISUAL
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("💤 KCAL", int(m['total']))
+        col2.metric("🥩 PROTEÍNA", f"{m['macros_totales']['p']}g")
+        col3.metric("🥦 CARBOS", f"{m['macros_totales']['c']}g")
+        col4.metric("🥑 GRASAS", f"{m['macros_totales']['f']}g")
+        st.divider()
+
         if st.button("🔄 Nuevo Menú OFF"):
             st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
             st.rerun()
