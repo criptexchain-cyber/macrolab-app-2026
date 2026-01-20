@@ -5,23 +5,16 @@ import copy
 import urllib.parse
 from collections import defaultdict
 
-# --- CONFIGURACIÓN SEO ---
-TITULO_SEO = "MacroLab - Entrenador y Nutricionista Inteligente"
-ICONO = "🔬"
+# ==========================================
+# CONFIGURACIÓN INICIAL
+# ==========================================
+st.set_page_config(page_title="MacroLab", page_icon="🔬", layout="wide")
 
-# ==============================================================================
-# 💰 CONFIGURACIÓN DE AFILIADO
-# ==============================================================================
-ID_AFILIADO = "criptex02-21" 
-# ==============================================================================
-
-try:
-    st.set_page_config(page_title=TITULO_SEO, page_icon=ICONO, layout="wide")
-except:
-    pass
+# TU ID DE AFILIADO
+ID_AFILIADO = "criptex02-21"
 
 # ==========================================
-# 1. BASE DE DATOS Y FUNCIONES
+# BASE DE DATOS ALIMENTOS
 # ==========================================
 DB_ALIMENTOS = [
     {"nombre": "Pechuga de Pollo", "tipo": "protein", "perfil": "salado", "macros": {"p": 23, "c": 0, "f": 1}},
@@ -44,6 +37,9 @@ DB_ALIMENTOS = [
     {"nombre": "Crema de Cacahuete", "tipo": "fat", "perfil": "dulce", "macros": {"p": 8, "c": 6, "f": 16}}
 ]
 
+# ==========================================
+# LÓGICA DE CÁLCULO (BACKEND)
+# ==========================================
 def buscar_alimento(tipo, gramos_macro, perfil_plato, prohibidos=[]):
     candidatos = [a for a in DB_ALIMENTOS if a['tipo'] == tipo]
     if prohibidos:
@@ -53,7 +49,7 @@ def buscar_alimento(tipo, gramos_macro, perfil_plato, prohibidos=[]):
             elif p == "gluten": candidatos = [x for x in candidatos if x['nombre'] not in ["Pasta Integral", "Pan Integral", "Avena"]]
             elif p == "pescado": candidatos = [x for x in candidatos if x['nombre'] not in ["Merluza", "Atún al Natural"]]
             elif p == "cacahuete": candidatos = [x for x in candidatos if x['nombre'] not in ["Frutos Secos", "Crema de Cacahuete"]]
-            
+    
     if perfil_plato != "neutro":
         candidatos = [a for a in candidatos if a['perfil'] in [perfil_plato, "neutro"]]
     
@@ -124,18 +120,6 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
         for item in comida['items']: compra[item['nombre']] += item['gramos_peso'] * dias_descanso
     return dict(compra)
 
-def mostrar_encabezado_macros(m, etiqueta_kcal):
-    # Función auxiliar para pintar los macros
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric(etiqueta_kcal, int(m['total']))
-    c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
-    c3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
-    c4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
-    st.divider()
-
-# ==========================================
-# 2. CÁLCULO DE MACROS Y RUTINAS
-# ==========================================
 def calcular_macros(perfil):
     peso, altura, edad = perfil['weight'], perfil['height'], perfil['age']
     genero, actividad = perfil['gender'], perfil['activity']
@@ -275,7 +259,7 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil):
     return txt
 
 # ==========================================
-# 3. INTERFAZ GRÁFICA (FRONTEND UNIFICADO)
+# INTERFAZ GRÁFICA (FRONTEND)
 # ==========================================
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
@@ -305,15 +289,12 @@ with st.sidebar:
     st.caption("🏋️ Configuración Entreno")
     dias_entreno = st.slider("Días Gym/Semana", 0, 7, 4)
     nivel_exp = st.selectbox("Nivel de Experiencia", ["Principiante", "Intermedio", "Avanzado"])
-    hora_entreno = st.time_input("Hora Entreno", datetime.time(18, 00))
     
     st.markdown("---")
     st.caption("🍽️ Configuración Dieta")
     estrategia = st.radio("Estrategia Nutricional", ["🌊 Ciclado (Días ON/OFF)", "📏 Lineal (Estable)"])
     n_comidas = st.number_input("Comidas/día", 2, 6, 4)
     prohibidos = st.multiselect("🚫 Alergias", ["leche", "huevo", "gluten", "pescado", "cacahuete"])
-    hora_bed = st.time_input("Hora Dormir", datetime.time(23, 0))
-    hora_wake = st.time_input("Hora Despertar", datetime.time(7, 30))
     
     if st.button("🚀 INICIAR LABORATORIO", use_container_width=True):
         st.session_state.generado = True
@@ -373,17 +354,11 @@ if not st.session_state.generado:
     st.title("🔬 MacroLab")
     st.markdown("### Sistema de Entrenamiento y Nutrición de Precisión")
     st.info("👈 Configura tus datos en el menú izquierdo.")
-    st.divider()
-    with st.expander("🔍 ¿Cómo funciona?"):
-        st.write("Calculadora científica de macros y generador de rutinas.")
 else:
     st.title("🔬 Panel de Control")
-    
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
-    # ----------------------------------------------------
-    # ESTRATEGIA 1: LINEAL (4 PESTAÑAS)
-    # ----------------------------------------------------
+    # === BLOQUE LINEAL ===
     if es_lineal:
         t_rutina, t_dieta, t_lista, t_share = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
         
@@ -392,29 +367,61 @@ else:
             if not rut.get('sesiones'):
                 st.warning("Sin entrenamiento.")
             else:
-                c1, c2 = st.columns(2)
-                c1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
-                c2.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
                 for dia, ejercicios in rut['sesiones'].items():
                     with st.expander(f"📌 {dia}", expanded=True):
-                        st.dataframe(data=ejercicios, hide_index=True, use_container_width=True)
-                st.markdown("### 📊 Volumen Semanal")
-                st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
+                        st.dataframe(ejercicios, hide_index=True, use_container_width=True)
 
         with t_dieta:
-            mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
+            m = st.session_state.macros_on
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("🔥 KCAL", int(m['total']))
+            c2.metric("PROT", f"{m['macros_totales']['p']}g")
+            c3.metric("CARB", f"{m['macros_totales']['c']}g")
+            c4.metric("GRAS", f"{m['macros_totales']['f']}g")
+            st.divider()
+            
             if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
-                st.session_state.menu_off = st.session_state.menu_on 
                 st.rerun()
             for comida, datos in st.session_state.menu_on.items():
                 with st.expander(f"🍽️ {comida}"):
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
-                    st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
-        
+                    
         with t_lista:
-            st.header("🛒 Lista Semanal")
+            st.header("🛒 Lista")
             lista = st.session_state.lista_compra
-            if lista:
-                for item, cantidad in sorted(lista.items()):
-                    if cantidad > 0: st.checkbox(f"**
+            for item, cant in sorted(lista.items()):
+                st.checkbox(f"**{item}**: {int(cant)}g")
+
+        with t_share:
+            st.header("📤 Exportar")
+            texto = generar_texto_plano(st.session_state.rutina, st.session_state.menu_on, st.session_state.menu_off, st.session_state.perfil)
+            st.text_area("Copia manual", texto, height=300)
+            
+    # === BLOQUE CICLADO ===
+    else:
+        t_rutina, t_on, t_off, t_lista, t_share = st.tabs(["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
+        
+        with t_rutina:
+            rut = st.session_state.rutina
+            if not rut.get('sesiones'):
+                st.warning("Sin entrenamiento.")
+            else:
+                for dia, ejercicios in rut['sesiones'].items():
+                    with st.expander(f"📌 {dia}", expanded=True):
+                        st.dataframe(ejercicios, hide_index=True, use_container_width=True)
+
+        with t_on:
+            m = st.session_state.macros_on
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("🔥 KCAL", int(m['total']))
+            c2.metric("PROT", f"{m['macros_totales']['p']}g")
+            c3.metric("CARB", f"{m['macros_totales']['c']}g")
+            c4.metric("GRAS", f"{m['macros_totales']['f']}g")
+            st.divider()
+            
+            if st.button("🔄 Nuevo Menú ON"):
+                st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
+                st.rerun()
+            for comida, datos in st.session_state.menu_on.items():
+                with st.expander(f"🍽️ {comida}"):
