@@ -348,25 +348,24 @@ with st.sidebar:
 
     st.write("")
     with st.expander("🏪 TIENDA FITNESS"):
-        # URLS GENÉRICAS CON TU TAG
         l_whey = f"https://www.amazon.es/s?k=proteina+whey&tag={ID_AFILIADO}"
         l_iso  = f"https://www.amazon.es/s?k=proteina+iso&tag={ID_AFILIADO}"
         l_crea = f"https://www.amazon.es/s?k=creatina+monohidrato&tag={ID_AFILIADO}"
         l_beta = f"https://www.amazon.es/s?k=beta+alanina&tag={ID_AFILIADO}"
         l_omeg = f"https://www.amazon.es/s?k=omega+3&tag={ID_AFILIADO}"
         l_vitd = f"https://www.amazon.es/s?k=vitamina+d&tag={ID_AFILIADO}"
+        l_gym  = f"https://www.amazon.es/s?k=juego+mancuernas&tag={ID_AFILIADO}"
         
         c1, c2 = st.columns(2)
         c1.link_button("🥛 Proteína Whey", l_whey, use_container_width=True)
         c2.link_button("💎 Proteína ISO", l_iso, use_container_width=True)
-        
         c3, c4 = st.columns(2)
         c3.link_button("⚡ Creatina", l_crea, use_container_width=True)
         c4.link_button("🔋 Beta Alanina", l_beta, use_container_width=True)
-        
         c5, c6 = st.columns(2)
         c5.link_button("🐟 Omega 3", l_omeg, use_container_width=True)
         c6.link_button("☀️ Vitamina D", l_vitd, use_container_width=True)
+        st.link_button("🏋️ Mancuernas", l_gym, use_container_width=True)
 
 # --- PANTALLA PRINCIPAL ---
 if not st.session_state.generado:
@@ -381,12 +380,10 @@ else:
     
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
-    # DEFINICIÓN DE PESTAÑAS (CORREGIDO PARA EVITAR ERROR DE INDENTACIÓN)
     if es_lineal:
-        t_rutina, t_dieta, t_lista, t_share = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
+        t_tabs = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
         
-        # --- RUTINA ---
-        with t_rutina:
+        with t_tabs[0]:
             rut = st.session_state.rutina
             if not rut.get('sesiones'):
                 st.warning("Sin entrenamiento.")
@@ -400,8 +397,7 @@ else:
                 st.markdown("### 📊 Volumen Semanal")
                 st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
-        # --- DIETA ÚNICA ---
-        with t_dieta:
+        with t_tabs[1]:
             mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
             if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
@@ -412,8 +408,7 @@ else:
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
         
-        # --- LISTA Y COMPARTIR ---
-        with t_lista:
+        with t_tabs[2]:
             st.header("🛒 Lista Semanal")
             lista = st.session_state.lista_compra
             if lista:
@@ -421,4 +416,6 @@ else:
                     if cantidad > 0: st.checkbox(f"**{item}**: {int(cantidad)}g")
             else: st.warning("Genera la dieta primero.")
 
-        with t_sh
+        with t_tabs[3]:
+            st.header("📤 Exportar Plan")
+            texto_final = generar_texto
