@@ -125,7 +125,6 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     return dict(compra)
 
 def mostrar_encabezado_macros(m, etiqueta_kcal):
-    # Función auxiliar para pintar los macros
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(etiqueta_kcal, int(m['total']))
     c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
@@ -379,15 +378,15 @@ if not st.session_state.generado:
 else:
     st.title("🔬 Panel de Control")
     
+    # ----------------------------------------------------------------------------------
+    # ESTRUCTURA SEGÚN ESTRATEGIA (BLOQUES SEPARADOS PARA EVITAR ERRORES DE INDENTACIÓN)
+    # ----------------------------------------------------------------------------------
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
-    # ----------------------------------------------------
-    # ESTRATEGIA 1: LINEAL (4 PESTAÑAS)
-    # ----------------------------------------------------
     if es_lineal:
+        # BLOQUE 1: ESTRATEGIA LINEAL (4 TABS)
         t_rutina, t_dieta, t_lista, t_share = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
         
-        # --- RUTINA ---
         with t_rutina:
             rut = st.session_state.rutina
             if not rut.get('sesiones'):
@@ -402,7 +401,6 @@ else:
                 st.markdown("### 📊 Volumen Semanal")
                 st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
-        # --- DIETA ÚNICA ---
         with t_dieta:
             mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
             if st.button("🔄 Nuevo Menú"):
@@ -414,9 +412,8 @@ else:
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
         
-        # --- LISTA ---
         with t_lista:
             st.header("🛒 Lista Semanal")
             lista = st.session_state.lista_compra
             if lista:
-                for item, cantidad 
+    
