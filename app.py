@@ -1,10 +1,9 @@
 import streamlit as st
-import streamlit.components.v1 as components
+import pandas as pd
 import datetime
 import random
 import copy
 import urllib.parse
-import pandas as pd  # Necesario para la tabla bonita
 from collections import defaultdict
 
 # --- CONFIGURACIÓN SEO ---
@@ -17,7 +16,7 @@ except:
     pass
 
 # ==========================================
-# 1. BASE DE DATOS DE ALIMENTOS (INTERNA)
+# 1. BASE DE DATOS Y FUNCIONES DE COCINA
 # ==========================================
 DB_ALIMENTOS = [
     {"nombre": "Pechuga de Pollo", "tipo": "protein", "perfil": "salado", "macros": {"p": 23, "c": 0, "f": 1}},
@@ -128,7 +127,7 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     return dict(compra)
 
 # ==========================================
-# 2. LÓGICA DE CÁLCULO
+# 2. CÁLCULO DE MACROS Y RUTINAS
 # ==========================================
 
 def calcular_macros(perfil):
@@ -188,6 +187,33 @@ def calcular_macros_descanso(res_entreno):
         res['comidas'][c]['carb'] = int(res['comidas'][c]['carb'] * 0.6)
     return res
 
+def calcular_promedio_lineal(m_on, m_off, dias_gym):
+    # Calcula la media ponderada semanal para hacer una dieta lineal
+    dias_off = 7 - dias_gym
+    
+    # 1. Promedio Kcal
+    kcal_avg = ((m_on['total'] * dias_gym) + (m_off['total'] * dias_off)) / 7
+    
+    # 2. Promedio Macros
+    p_avg = ((m_on['macros_totales']['p'] * dias_gym) + (m_off['macros_totales']['p'] * dias_off)) / 7
+    c_avg = ((m_on['macros_totales']['c'] * dias_gym) + (m_off['macros_totales']['c'] * dias_off)) / 7
+    f_avg = ((m_on['macros_totales']['f'] * dias_gym) + (m_off['macros_totales']['f'] * dias_off)) / 7
+    
+    # Construir objeto resultado
+    res = copy.deepcopy(m_on)
+    res['total'] = int(kcal_avg)
+    res['macros_totales'] = {'p': int(p_avg), 'c': int(c_avg), 'f': int(f_avg)}
+    
+    # Recalcular distribución comidas
+    n_comidas = len(res['comidas'])
+    for c in res['comidas']:
+        res['comidas'][c] = {
+            'prot': int(p_avg / n_comidas),
+            'carb': int(c_avg / n_comidas),
+            'fat': int(f_avg / n_comidas)
+        }
+    return res
+
 def generar_rutina_inteligente(perfil):
     dias = perfil['dias_entreno']
     nivel = perfil['nivel']
@@ -228,13 +254,12 @@ def generar_rutina_inteligente(perfil):
             series = 3 if nivel == "Principiante" else (5 if nivel == "Avanzado" else 4)
             rutina_final['volumen_total'][grupo] += series
             
-            # Guardamos como diccionario simple para DataFrame
             detalles_dia.append({
-                'Ejercicio': ej, 
-                'Series': series, 
-                'Repes': '8-12', 
-                'RIR': cfg['rir'], 
-                'Tempo': cfg['tempo']
+                "Ejercicio": ej,
+                "Sets": str(series),
+                "Reps": "8-12",
+                "RIR": cfg['rir'],
+                "Tempo": cfg['tempo']
             })
             
         rutina_final['sesiones'][f"Día {i+1} ({nombre_dia})"] = detalles_dia
@@ -247,7 +272,7 @@ def generar_texto_plano(rutina, menu_on, menu_off):
     for dia, ejercicios in rutina.get('sesiones', {}).items():
         txt += f"\n📌 *{dia.upper()}*\n"
         for ej in ejercicios:
-            txt += f"- {ej['Ejercicio']} | {ej['Series']}x{ej['Repes']} | RIR:{ej['RIR']}\n"
+            txt += f"- {ej['Ejercicio']} | {ej['Sets']}x{ej['Reps']} | RIR:{ej['RIR']}\n"
     txt += "\n*🔥 DIETA ON (Entreno)*\n"
     for comida, datos in menu_on.items():
         txt += f"_{comida}_: "
@@ -261,7 +286,7 @@ def generar_texto_plano(rutina, menu_on, menu_off):
     return txt
 
 # ==========================================
-# 3. INTERFAZ (FRONTEND)
+# 3. INTERFAZ GRÁFICA (STREAMLIT)
 # ==========================================
 
 if 'generado' not in st.session_state: st.session_state.generado = False
@@ -297,6 +322,10 @@ with st.sidebar:
     
     st.markdown("---")
     st.caption("🍽️ Configuración Dieta")
+    
+    # --- AQUÍ ESTÁ EL SELECTOR QUE FALTABA ---
+    estrategia = st.radio("Estrategia Nutricional", ["🌊 Ciclado (Días ON/OFF)", "📏 Lineal (Estable)"])
+    
     n_comidas = st.number_input("Comidas/día", 2, 6, 4)
     prohibidos = st.multiselect("🚫 Alergias", ["leche", "huevo", "gluten", "pescado", "cacahuete"])
     hora_bed = st.time_input("Hora Dormir", datetime.time(23, 0))
@@ -312,8 +341,22 @@ with st.sidebar:
             "nivel": nivel_exp
         }
         st.session_state.perfil = perfil
-        st.session_state.macros_on = calcular_macros(perfil)
-        st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on)
+        
+        # 1. Calculamos base ON y OFF
+        base_on = calcular_macros(perfil)
+        base_off = calcular_macros_descanso(base_on)
+        
+        # 2. Aplicamos estrategia
+        if estrategia == "📏 Lineal (Estable)":
+            # Promediamos y asignamos lo mismo a los dos
+            promedio = calcular_promedio_lineal(base_on, base_off, dias_entreno)
+            st.session_state.macros_on = promedio
+            st.session_state.macros_off = promedio
+        else:
+            # Mantenemos ciclado
+            st.session_state.macros_on = base_on
+            st.session_state.macros_off = base_off
+            
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
@@ -332,6 +375,7 @@ with st.sidebar:
 # --- PANTALLA PRINCIPAL ---
 if not st.session_state.generado:
     st.title("🔬 MacroLab")
+    st.markdown("### Sistema de Entrenamiento y Nutrición de Precisión")
     st.info("👈 Configura tus datos en el menú izquierdo.")
     st.divider()
     with st.expander("🔍 ¿Cómo funciona?"):
@@ -340,7 +384,7 @@ else:
     st.title("🔬 Panel de Control")
     tabs = st.tabs(["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
     
-    # 1. RUTINA MEJORADA (TABLA LIMPIA)
+    # 1. RUTINA
     with tabs[0]:
         rut = st.session_state.rutina
         if not rut.get('sesiones'):
@@ -352,33 +396,20 @@ else:
             
             for dia, ejercicios in rut['sesiones'].items():
                 with st.expander(f"📌 {dia}", expanded=True):
-                    # AQUÍ ESTÁ LA SOLUCIÓN: Dataframe en vez de columnas
                     df_rutina = pd.DataFrame(ejercicios)
-                    st.dataframe(
-                        df_rutina, 
-                        hide_index=True, 
-                        use_container_width=True,
-                        column_config={
-                            "Ejercicio": st.column_config.TextColumn("Ejercicio", width="medium"),
-                            "Series": st.column_config.TextColumn("Series", width="small"),
-                            "Repes": st.column_config.TextColumn("Reps", width="small"),
-                            "RIR": st.column_config.TextColumn("RIR", width="small"),
-                            "Tempo": st.column_config.TextColumn("Tempo", width="small")
-                        }
-                    )
+                    st.dataframe(df_rutina, hide_index=True, use_container_width=True)
             
             st.markdown("### 📊 Volumen Semanal")
             st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
-    # 2. DÍA ON (MACROS RESTAURADOS)
+    # 2. DÍA ON
     with tabs[1]:
         m = st.session_state.macros_on
-        # BLOQUE DE MACROS VISUAL
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("🔥 KCAL", int(m['total']))
-        col2.metric("🥩 PROTEÍNA", f"{m['macros_totales']['p']}g")
-        col3.metric("🍚 CARBOS", f"{m['macros_totales']['c']}g")
-        col4.metric("🥑 GRASAS", f"{m['macros_totales']['f']}g")
+        col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
+        col3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
+        col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
         st.divider()
 
         if st.button("🔄 Nuevo Menú ON"):
@@ -391,15 +422,14 @@ else:
                     st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                 st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
 
-    # 3. DÍA OFF (MACROS RESTAURADOS)
+    # 3. DÍA OFF
     with tabs[2]:
         m = st.session_state.macros_off
-        # BLOQUE DE MACROS VISUAL
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("💤 KCAL", int(m['total']))
-        col2.metric("🥩 PROTEÍNA", f"{m['macros_totales']['p']}g")
-        col3.metric("🥦 CARBOS", f"{m['macros_totales']['c']}g")
-        col4.metric("🥑 GRASAS", f"{m['macros_totales']['f']}g")
+        col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
+        col3.metric("🥦 CARB", f"{m['macros_totales']['c']}g")
+        col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
         st.divider()
 
         if st.button("🔄 Nuevo Menú OFF"):
@@ -425,8 +455,4 @@ else:
         st.header("📤 Exportar Plan")
         texto_final = generar_texto_plano(st.session_state.rutina, st.session_state.menu_on, st.session_state.menu_off)
         c1, c2 = st.columns(2)
-        url_w = f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_final)}"
-        c1.link_button("📱 Enviar WhatsApp", url_w, use_container_width=True)
-        mailto = f"mailto:?subject=Plan MacroLab&body={urllib.parse.quote(texto_final)}"
-        c2.link_button("📧 Enviar Email", mailto, use_container_width=True)
-        st.text_area("Copia manual", texto_final, height=300)
+        url_w = f"https://api.whats
