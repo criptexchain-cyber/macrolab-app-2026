@@ -9,9 +9,6 @@ from collections import defaultdict
 TITULO_SEO = "MacroLab - Entrenador y Nutricionista Inteligente"
 ICONO = "🔬"
 
-# --- 💰 CONFIGURACIÓN AFILIADO (¡PON TU ID AQUÍ!) ---
-ID_AFILIADO = "PON_TU_ID_AQUÍ"  # Ej: macrolab-21
-
 try:
     st.set_page_config(page_title=TITULO_SEO, page_icon=ICONO, layout="wide")
 except:
@@ -346,14 +343,9 @@ with st.sidebar:
 
     st.write("")
     with st.expander("🏪 TIENDA FITNESS"):
-        # URLS CONSTRUIDAS CON F-STRING PARA EVITAR ERRORES DE COPIA
-        link_prot = f"https://www.amazon.es/s?k=proteina+whey&tag={ID_AFILIADO}"
-        link_crea = f"https://www.amazon.es/s?k=creatina+monohidrato&tag={ID_AFILIADO}"
-        link_gym  = f"https://www.amazon.es/s?k=juego+mancuernas&tag={ID_AFILIADO}"
-        
-        st.link_button("🥛 Proteína", link_prot, use_container_width=True)
-        st.link_button("⚡ Creatina", link_crea, use_container_width=True)
-        st.link_button("🏋️ Mancuernas", link_gym, use_container_width=True)
+        st.link_button("🥛 Proteína", "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21", use_container_width=True)
+        st.link_button("⚡ Creatina", "https://www.amazon.es/s?k=creatina+monohidrato&tag=criptex02-21", use_container_width=True)
+        st.link_button("🏋️ Mancuernas", "https://www.amazon.es/s?k=juego+mancuernas&tag=criptex02-21", use_container_width=True)
 
 # --- PANTALLA PRINCIPAL ---
 if not st.session_state.generado:
@@ -425,4 +417,9 @@ else:
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
         
         with mis_tabs[2]: # OFF
-            # USAMO
+            # USAMOS LA FUNCIÓN AUXILIAR
+            mostrar_encabezado_macros(st.session_state.macros_off, "💤 KCAL")
+            
+            if st.button("🔄 Nuevo Menú OFF"):
+                st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
+                
