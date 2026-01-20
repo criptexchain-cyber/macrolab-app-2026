@@ -296,6 +296,9 @@ with st.sidebar:
     
     st.markdown("---")
     st.caption("🍽️ Configuración Dieta")
+    # --- ¡AQUÍ ESTÁ LA RECUPERACIÓN! ---
+    estrategia = st.radio("Estrategia", ["🌊 Ciclado (ON/OFF)", "📏 Lineal (Estable)"])
+    # -----------------------------------
     n_comidas = st.number_input("Comidas/día", 2, 6, 4)
     prohibidos = st.multiselect("🚫 Alergias", ["leche", "huevo", "gluten", "pescado", "cacahuete"])
     hora_bed = st.time_input("Hora Dormir", datetime.time(23, 0))
@@ -308,11 +311,23 @@ with st.sidebar:
             "gender": "male" if genero=="Hombre" else "female",
             "activity": actividad, "goal": obj_txt[0], "intensity": intensidad,
             "num_comidas": n_comidas, "dias_entreno": dias_entreno, 
-            "nivel": nivel_exp
+            "nivel": nivel_exp,
+            "estrategia": estrategia # Guardamos la estrategia
         }
         st.session_state.perfil = perfil
-        st.session_state.macros_on = calcular_macros(perfil)
-        st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on)
+        
+        # --- LÓGICA RECUPERADA ---
+        macros_base = calcular_macros(perfil)
+        if "Lineal" in estrategia:
+            # Si es lineal, ON y OFF son iguales
+            st.session_state.macros_on = macros_base
+            st.session_state.macros_off = macros_base
+        else:
+            # Si es ciclado, OFF es reducido
+            st.session_state.macros_on = macros_base
+            st.session_state.macros_off = calcular_macros_descanso(macros_base)
+        # -------------------------
+
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
@@ -379,6 +394,7 @@ else:
 
         if st.button("🔄 Nuevo Menú ON"):
             st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
+            st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
             st.rerun()
             
         for comida, datos in st.session_state.menu_on.items():
@@ -400,6 +416,7 @@ else:
 
         if st.button("🔄 Nuevo Menú OFF"):
             st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
+            st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
             st.rerun()
             
         for comida, datos in st.session_state.menu_off.items():
