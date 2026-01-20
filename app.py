@@ -125,6 +125,7 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     return dict(compra)
 
 def mostrar_encabezado_macros(m, etiqueta_kcal):
+    # Función auxiliar para pintar los macros
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(etiqueta_kcal, int(m['total']))
     c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
@@ -378,13 +379,12 @@ if not st.session_state.generado:
 else:
     st.title("🔬 Panel de Control")
     
-    # ----------------------------------------------------------------------------------
-    # ESTRUCTURA SEGÚN ESTRATEGIA (BLOQUES SEPARADOS PARA EVITAR ERRORES DE INDENTACIÓN)
-    # ----------------------------------------------------------------------------------
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
+    # ----------------------------------------------------
+    # ESTRATEGIA 1: LINEAL (4 PESTAÑAS)
+    # ----------------------------------------------------
     if es_lineal:
-        # BLOQUE 1: ESTRATEGIA LINEAL (4 TABS)
         t_rutina, t_dieta, t_lista, t_share = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
         
         with t_rutina:
@@ -416,4 +416,5 @@ else:
             st.header("🛒 Lista Semanal")
             lista = st.session_state.lista_compra
             if lista:
-    
+                for item, cantidad in sorted(lista.items()):
+                    if cantidad > 0: st.checkbox(f"**
