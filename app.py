@@ -15,7 +15,7 @@ except:
     pass
 
 # ==========================================
-# 1. BASE DE DATOS Y FUNCIONES DE COCINA
+# 1. BASE DE DATOS Y FUNCIONES
 # ==========================================
 DB_ALIMENTOS = [
     {"nombre": "Pechuga de Pollo", "tipo": "protein", "perfil": "salado", "macros": {"p": 23, "c": 0, "f": 1}},
@@ -117,6 +117,15 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     for comida in menu_off.values():
         for item in comida['items']: compra[item['nombre']] += item['gramos_peso'] * dias_descanso
     return dict(compra)
+
+def mostrar_encabezado_macros(m, etiqueta_kcal):
+    # Función auxiliar para pintar los macros y evitar errores visuales
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric(etiqueta_kcal, int(m['total']))
+    c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
+    c3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
+    c4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
+    st.divider()
 
 # ==========================================
 # 2. CÁLCULO DE MACROS Y RUTINAS
@@ -378,13 +387,9 @@ else:
     if es_lineal:
         # SOLO 1 PESTAÑA DE DIETA
         with mis_tabs[1]:
-            m = st.session_state.macros_on
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("🔥 KCAL", int(m['total']))
-            col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
-            col3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
-            col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
-            st.divider()
+            # USAMOS LA FUNCIÓN AUXILIAR PARA EVITAR ERRORES
+            mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
+            
             if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
                 st.session_state.menu_off = st.session_state.menu_on 
@@ -394,20 +399,15 @@ else:
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
         
-        # AJUSTE DE ÍNDICES PARA LISTA Y COMPARTIR
         idx_lista = 2
         idx_share = 3
         
     else:
         # MODO CICLADO: 2 PESTAÑAS (ON y OFF)
         with mis_tabs[1]: # ON
-            m = st.session_state.macros_on
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("🔥 KCAL", int(m['total']))
-            col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
-            col3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
-            col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
-            st.divider()
+            # USAMOS LA FUNCIÓN AUXILIAR
+            mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
+            
             if st.button("🔄 Nuevo Menú ON"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
                 st.rerun()
@@ -417,7 +417,9 @@ else:
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
         
         with mis_tabs[2]: # OFF
-            m = st.session_state.macros_off
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("💤 KCAL", int(m['total']))
-            col2.me
+            # USAMOS LA FUNCIÓN AUXILIAR
+            mostrar_encabezado_macros(st.session_state.macros_off, "💤 KCAL")
+            
+            if st.button("🔄 Nuevo Menú OFF"):
+                st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
+                
