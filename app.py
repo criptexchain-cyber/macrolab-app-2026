@@ -125,7 +125,7 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     return dict(compra)
 
 def mostrar_encabezado_macros(m, etiqueta_kcal):
-    # Función auxiliar para pintar los macros
+    # Función auxiliar para pintar los macros y evitar errores visuales
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(etiqueta_kcal, int(m['total']))
     c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
@@ -275,7 +275,7 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil):
     return txt
 
 # ==========================================
-# 3. INTERFAZ GRÁFICA (FRONTEND)
+# 3. INTERFAZ GRÁFICA (FRONTEND UNIFICADO)
 # ==========================================
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
@@ -381,31 +381,27 @@ else:
     
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
+    # DEFINICIÓN DE PESTAÑAS (CORREGIDO PARA EVITAR ERROR DE INDENTACIÓN)
     if es_lineal:
-        nombres_tabs = ["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"]
-    else:
-        nombres_tabs = ["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"]
+        t_rutina, t_dieta, t_lista, t_share = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
         
-    mis_tabs = st.tabs(nombres_tabs)
-    
-    # --- PESTAÑA 0: RUTINA ---
-    with mis_tabs[0]:
-        rut = st.session_state.rutina
-        if not rut.get('sesiones'):
-            st.warning("Sin entrenamiento.")
-        else:
-            c1, c2 = st.columns(2)
-            c1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
-            c2.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
-            for dia, ejercicios in rut['sesiones'].items():
-                with st.expander(f"📌 {dia}", expanded=True):
-                    st.dataframe(data=ejercicios, hide_index=True, use_container_width=True)
-            st.markdown("### 📊 Volumen Semanal")
-            st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
+        # --- RUTINA ---
+        with t_rutina:
+            rut = st.session_state.rutina
+            if not rut.get('sesiones'):
+                st.warning("Sin entrenamiento.")
+            else:
+                c1, c2 = st.columns(2)
+                c1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
+                c2.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
+                for dia, ejercicios in rut['sesiones'].items():
+                    with st.expander(f"📌 {dia}", expanded=True):
+                        st.dataframe(data=ejercicios, hide_index=True, use_container_width=True)
+                st.markdown("### 📊 Volumen Semanal")
+                st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
-    # --- PESTAÑAS DE DIETA ---
-    if es_lineal:
-        with mis_tabs[1]:
+        # --- DIETA ÚNICA ---
+        with t_dieta:
             mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
             if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
@@ -415,12 +411,14 @@ else:
                 with st.expander(f"🍽️ {comida}"):
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
-        idx_lista, idx_share = 2, 3
-    else:
-        with mis_tabs[1]: # ON
-            mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
-            if st.button("🔄 Nuevo Menú ON"):
-                st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
-                st.rerun()
-            for comida, datos in st.session_state.menu_on.items():
-                wit
+        
+        # --- LISTA Y COMPARTIR ---
+        with t_lista:
+            st.header("🛒 Lista Semanal")
+            lista = st.session_state.lista_compra
+            if lista:
+                for item, cantidad in sorted(lista.items()):
+                    if cantidad > 0: st.checkbox(f"**{item}**: {int(cantidad)}g")
+            else: st.warning("Genera la dieta primero.")
+
+        with t_sh
