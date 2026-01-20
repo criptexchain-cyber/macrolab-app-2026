@@ -9,6 +9,7 @@ from collections import defaultdict
 # --- CONFIGURACIÓN SEO ---
 TITULO_SEO = "MacroLab - Entrenador y Nutricionista Inteligente"
 ICONO = "🔬"
+ID_AFILIADO = "criptex02-21"
 
 try:
     st.set_page_config(page_title=TITULO_SEO, page_icon=ICONO, layout="wide")
@@ -16,7 +17,7 @@ except:
     pass
 
 # ==========================================
-# 1. BASE DE DATOS DE ALIMENTOS (INTERNA)
+# 1. BASE DE DATOS DE ALIMENTOS
 # ==========================================
 DB_ALIMENTOS = [
     {"nombre": "Pechuga de Pollo", "tipo": "protein", "perfil": "salado", "macros": {"p": 23, "c": 0, "f": 1}},
@@ -41,7 +42,6 @@ DB_ALIMENTOS = [
 
 def buscar_alimento(tipo, gramos_macro, perfil_plato, prohibidos=[]):
     candidatos = [a for a in DB_ALIMENTOS if a['tipo'] == tipo]
-    
     if prohibidos:
         for p in prohibidos:
             if p == "leche": candidatos = [x for x in candidatos if x['nombre'] not in ["Yogur Griego 0%", "Proteína Whey"]]
@@ -109,40 +109,45 @@ def crear_menu_diario(datos_macros, prohibidos=[]):
                 
         llevamos['kcal'] = (llevamos['p']*4) + (llevamos['c']*4) + (llevamos['f']*9)
         menu[nombre_comida] = {"items": items_plato, "totales": llevamos}
-        
     return menu
 
 def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     dias_descanso = 7 - dias_entreno
     compra = defaultdict(float)
     
-    for comida in menu_on.values():
-        for item in comida['items']: 
-            compra[item['nombre']] += item['gramos_peso'] * dias_entreno
-            
-    for comida in menu_off.values():
-        for item in comida['items']: 
-            compra[item['nombre']] += item['gramos_peso'] * dias_descanso
+    if menu_on:
+        for comida in menu_on.values():
+            for item in comida['items']: 
+                compra[item['nombre']] += item['gramos_peso'] * dias_entreno
+    if menu_off:
+        for comida in menu_off.values():
+            for item in comida['items']: 
+                compra[item['nombre']] += item['gramos_peso'] * dias_descanso
             
     return dict(compra)
+
+def mostrar_encabezado_macros(m, etiqueta_kcal):
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric(etiqueta_kcal, int(m['total']))
+    c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
+    c3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
+    c4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
+    st.divider()
 
 # ==========================================
 # 2. LÓGICA DE CÁLCULO
 # ==========================================
-
 def calcular_macros(perfil):
     peso, altura, edad = perfil['weight'], perfil['height'], perfil['age']
     genero, actividad = perfil['gender'], perfil['activity']
     
     if genero == 'male': tmb = (10 * peso) + (6.25 * altura) - (5 * edad) + 5
     else: tmb = (10 * peso) + (6.25 * altura) - (5 * edad) - 161
-        
     tdee = tmb * actividad
     
     goal = perfil['goal']
     intensity = perfil['intensity']
     ajuste_kcal = 0
-    
     if goal == '1': # Perder
         if "Lento" in intensity: ajuste_kcal = -250
         elif "Rápido" in intensity: ajuste_kcal = -600
@@ -151,7 +156,6 @@ def calcular_macros(perfil):
         if "Lento" in intensity: ajuste_kcal = +200
         elif "Rápido" in intensity: ajuste_kcal = +500
         else: ajuste_kcal = +350
-    
     target_kcal = tdee + ajuste_kcal
     
     factor_prot = 2.2 if goal == '1' else 2.0
@@ -167,17 +171,9 @@ def calcular_macros(perfil):
     mis_comidas = nombres[:n_comidas]
     
     for c in mis_comidas:
-        distribucion[c] = {
-            'prot': int(prot_g / n_comidas),
-            'carb': int(carb_g / n_comidas),
-            'fat': int(fat_g / n_comidas)
-        }
+        distribucion[c] = {'prot': int(prot_g / n_comidas), 'carb': int(carb_g / n_comidas), 'fat': int(fat_g / n_comidas)}
     
-    return {
-        'total': target_kcal,
-        'macros_totales': {'p': int(prot_g), 'c': int(carb_g), 'f': int(fat_g)},
-        'comidas': distribucion
-    }
+    return {'total': target_kcal, 'macros_totales': {'p': int(prot_g), 'c': int(carb_g), 'f': int(fat_g)}, 'comidas': distribucion}
 
 def calcular_macros_descanso(res_entreno):
     res = copy.deepcopy(res_entreno)
@@ -187,10 +183,27 @@ def calcular_macros_descanso(res_entreno):
         res['comidas'][c]['carb'] = int(res['comidas'][c]['carb'] * 0.6)
     return res
 
+def calcular_promedio_lineal(m_on, m_off, dias_gym):
+    dias_off = 7 - dias_gym
+    # Promedio ponderado semanal
+    kcal_avg = ((m_on['total'] * dias_gym) + (m_off['total'] * dias_off)) / 7
+    p_avg = ((m_on['macros_totales']['p'] * dias_gym) + (m_off['macros_totales']['p'] * dias_off)) / 7
+    c_avg = ((m_on['macros_totales']['c'] * dias_gym) + (m_off['macros_totales']['c'] * dias_off)) / 7
+    f_avg = ((m_on['macros_totales']['f'] * dias_gym) + (m_off['macros_totales']['f'] * dias_off)) / 7
+    
+    res = copy.deepcopy(m_on)
+    res['total'] = int(kcal_avg)
+    res['macros_totales'] = {'p': int(p_avg), 'c': int(c_avg), 'f': int(f_avg)}
+    
+    n_comidas = len(res['comidas'])
+    for c in res['comidas']:
+        res['comidas'][c] = {'prot': int(p_avg/n_comidas), 'carb': int(c_avg/n_comidas), 'fat': int(f_avg/n_comidas)}
+        
+    return res
+
 def generar_rutina_inteligente(perfil):
     dias = perfil['dias_entreno']
     nivel = perfil['nivel']
-    
     config_nivel = {
         "Principiante": {"rir": "3-4", "tempo": "2-0-2-0"},
         "Intermedio":   {"rir": "2-3", "tempo": "3-0-1-0"},
@@ -220,14 +233,11 @@ def generar_rutina_inteligente(perfil):
     for i in range(dias):
         nombre_dia = dias_nombres[i % len(dias_nombres)]
         ejercicios_base = estructura.get(nombre_dia, ["Sentadilla", "Press Militar", "Remo Barra"])
-        
         detalles_dia = []
         for ej in ejercicios_base:
             grupo = db_ejercicios.get(ej, "General")
             series = 3 if nivel == "Principiante" else (5 if nivel == "Avanzado" else 4)
             rutina_final['volumen_total'][grupo] += series
-            
-            # --- CORRECCIÓN: Estructura plana para DataFrame ---
             detalles_dia.append({
                 "Ejercicio": ej,
                 "Sets": str(series),
@@ -235,37 +245,41 @@ def generar_rutina_inteligente(perfil):
                 "RIR": cfg['rir'],
                 "Tempo": cfg['tempo']
             })
-            
         rutina_final['sesiones'][f"Día {i+1} ({nombre_dia})"] = detalles_dia
-
     return rutina_final
 
-def generar_texto_plano(rutina, menu_on, menu_off):
+def generar_texto_plano(rutina, menu_on, menu_off, perfil):
     txt = "*🧬 PLAN MACROLAB*\n\n"
     txt += "*🏋️ RUTINA SEMANAL*\n"
     for dia, ejercicios in rutina.get('sesiones', {}).items():
         txt += f"\n📌 *{dia.upper()}*\n"
         for ej in ejercicios:
             txt += f"- {ej['Ejercicio']} | {ej['Sets']}x{ej['Reps']} | RIR:{ej['RIR']}\n"
+    
     txt += "\n*🔥 DIETA ON (Entreno)*\n"
     for comida, datos in menu_on.items():
         txt += f"_{comida}_: "
         items = [f"{i['nombre']} ({i['gramos_peso']}g)" for i in datos['items']]
         txt += ", ".join(items) + "\n"
+    
     txt += "\n*💤 DIETA OFF (Descanso)*\n"
     for comida, datos in menu_off.items():
         txt += f"_{comida}_: "
         items = [f"{i['nombre']} ({i['gramos_peso']}g)" for i in datos['items']]
         txt += ", ".join(items) + "\n"
+            
     return txt
 
 # ==========================================
-# 3. INTERFAZ (FRONTEND)
+# 3. INTERFAZ GRÁFICA (FRONTEND UNIFICADO)
 # ==========================================
-
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
 if 'menu_on' not in st.session_state: st.session_state.menu_on = {}
+if 'menu_off' not in st.session_state: st.session_state.menu_off = {}
+if 'macros_on' not in st.session_state: st.session_state.macros_on = {}
+if 'macros_off' not in st.session_state: st.session_state.macros_off = {}
+if 'lista_compra' not in st.session_state: st.session_state.lista_compra = {}
 
 # --- BARRA LATERAL ---
 with st.sidebar:
@@ -284,7 +298,6 @@ with st.sidebar:
         "5. Muy Activo (x1.9)": 1.9
     }
     actividad = act_map[st.selectbox("Actividad", list(act_map.keys()))]
-    
     obj_txt = st.selectbox("Objetivo", ["1. Perder Grasa", "2. Ganar Músculo", "3. Mantener"])
     intensidad = st.select_slider("Ritmo", options=["Lento (Conservador)", "Estándar", "Rápido (Agresivo)"], value="Estándar")
     
@@ -296,10 +309,10 @@ with st.sidebar:
     
     st.markdown("---")
     st.caption("🍽️ Configuración Dieta")
+    # ✅ AQUÍ ESTÁ EL SELECTOR RECUPERADO
+    estrategia = st.radio("Estrategia Nutricional", ["🌊 Ciclado (Días ON/OFF)", "📏 Lineal (Estable)"])
     n_comidas = st.number_input("Comidas/día", 2, 6, 4)
     prohibidos = st.multiselect("🚫 Alergias", ["leche", "huevo", "gluten", "pescado", "cacahuete"])
-    hora_bed = st.time_input("Hora Dormir", datetime.time(23, 0))
-    hora_wake = st.time_input("Hora Despertar", datetime.time(7, 30))
     
     if st.button("🚀 INICIAR LABORATORIO", use_container_width=True):
         st.session_state.generado = True
@@ -308,11 +321,24 @@ with st.sidebar:
             "gender": "male" if genero=="Hombre" else "female",
             "activity": actividad, "goal": obj_txt[0], "intensity": intensidad,
             "num_comidas": n_comidas, "dias_entreno": dias_entreno, 
-            "nivel": nivel_exp
+            "nivel": nivel_exp, "estrategia": estrategia
         }
         st.session_state.perfil = perfil
-        st.session_state.macros_on = calcular_macros(perfil)
-        st.session_state.macros_off = calcular_macros_descanso(st.session_state.macros_on)
+        
+        # 1. Calcular Macros Base
+        base_on = calcular_macros(perfil)
+        base_off = calcular_macros_descanso(base_on)
+        
+        # 2. Aplicar Estrategia (Lógica recuperada)
+        if "Lineal" in estrategia:
+            promedio = calcular_promedio_lineal(base_on, base_off, dias_entreno)
+            st.session_state.macros_on = promedio
+            st.session_state.macros_off = promedio # Mismos macros para ON y OFF
+        else:
+            st.session_state.macros_on = base_on
+            st.session_state.macros_off = base_off # Macros distintos
+            
+        # 3. Generar Menús y Lista
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
@@ -324,27 +350,29 @@ with st.sidebar:
 
     st.write("")
     with st.expander("🏪 TIENDA FITNESS"):
-        st.link_button("🥛 Proteína", "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21", use_container_width=True)
-        st.link_button("⚡ Creatina", "https://www.amazon.es/s?k=creatina+monohidrato&tag=criptex02-21", use_container_width=True)
-        st.link_button("🏋️ Mancuernas", "https://www.amazon.es/s?k=juego+mancuernas&tag=criptex02-21", use_container_width=True)
+        tag = f"&tag={ID_AFILIADO}"
+        base = "https://www.amazon.es/s?k="
+        
+        st.link_button("🥛 Proteína Whey", base + "proteina+whey" + tag, use_container_width=True)
+        st.link_button("💎 Proteína ISO", base + "proteina+iso" + tag, use_container_width=True)
+        st.link_button("⚡ Creatina", base + "creatina+monohidrato" + tag, use_container_width=True)
+        st.link_button("🔋 Beta Alanina", base + "beta+alanina" + tag, use_container_width=True)
+        st.link_button("🐟 Omega 3", base + "omega+3" + tag, use_container_width=True)
+        st.link_button("☀️ Vitamina D", base + "vitamina+d" + tag, use_container_width=True)
+        st.link_button("🏋️ Mancuernas", base + "juego+mancuernas" + tag, use_container_width=True)
 
 # --- PANTALLA PRINCIPAL ---
 if not st.session_state.generado:
-    # LOGO RECUPERADO (SOLO TEXTO GRANDE PARA EVITAR ERRORES DE IMAGEN)
     st.title("🔬 MacroLab")
     st.markdown("### Sistema de Entrenamiento y Nutrición de Precisión")
     st.info("👈 Configura tus datos en el menú izquierdo.")
-    st.divider()
-    with st.expander("🔍 ¿Cómo funciona?"):
-        st.write("Calculadora científica de macros y generador de rutinas.")
 else:
-    # LOGO RECUPERADO EN EL PANEL
     st.title("🔬 Panel de Control")
     
-    tabs = st.tabs(["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
+    t1, t2, t3, t4, t5 = st.tabs(["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
     
-    # 1. RUTINA ARREGLADA (SOLUCIÓN MÓVIL)
-    with tabs[0]:
+    # 1. RUTINA
+    with t1:
         rut = st.session_state.rutina
         if not rut.get('sesiones'):
             st.warning("Sin entrenamiento.")
@@ -352,77 +380,54 @@ else:
             c1, c2 = st.columns(2)
             c1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
             c2.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
-            
             for dia, ejercicios in rut['sesiones'].items():
                 with st.expander(f"📌 {dia}", expanded=True):
-                    # AQUÍ ESTÁ LA SOLUCIÓN: Dataframe puro sin columnas que se rompan
-                    df_rutina = pd.DataFrame(ejercicios)
-                    st.dataframe(
-                        df_rutina, 
-                        hide_index=True, 
-                        use_container_width=True
-                    )
-            
+                    # Usar DataFrame para tabla limpia
+                    df = pd.DataFrame(ejercicios)
+                    st.dataframe(df, hide_index=True, use_container_width=True)
             st.markdown("### 📊 Volumen Semanal")
             st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
-    # 2. DÍA ON (MACROS ARREGLADOS)
-    with tabs[1]:
+    # 2. DÍA ON
+    with t2:
         m = st.session_state.macros_on
-        # BLOQUE DE MACROS VISIBLE ARRIBA
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("🔥 KCAL", int(m['total']))
-        col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
-        col3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
-        col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
-        st.divider()
-
-        if st.button("🔄 Nuevo Menú ON"):
-            st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
-            st.rerun()
+        if m:
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("🔥 KCAL", int(m['total']))
+            c2.metric("PROT", f"{m['macros_totales']['p']}g")
+            c3.metric("CARB", f"{m['macros_totales']['c']}g")
+            c4.metric("GRAS", f"{m['macros_totales']['f']}g")
+            st.divider()
             
-        for comida, datos in st.session_state.menu_on.items():
-            with st.expander(f"🍽️ {comida}"):
-                for item in datos['items']:
-                    st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
-                st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
+            if st.button("🔄 Nuevo Menú ON"):
+                st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
+                st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
+                st.rerun()
+                
+            for comida, datos in st.session_state.menu_on.items():
+                with st.expander(f"🍽️ {comida}"):
+                    for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
 
-    # 3. DÍA OFF (MACROS ARREGLADOS)
-    with tabs[2]:
+    # 3. DÍA OFF
+    with t3:
         m = st.session_state.macros_off
-        # BLOQUE DE MACROS VISIBLE ARRIBA
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("💤 KCAL", int(m['total']))
-        col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
-        col3.metric("🥦 CARB", f"{m['macros_totales']['c']}g")
-        col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
-        st.divider()
-
-        if st.button("🔄 Nuevo Menú OFF"):
-            st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
-            st.rerun()
+        if m:
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("💤 KCAL", int(m['total']))
+            c2.metric("PROT", f"{m['macros_totales']['p']}g")
+            c3.metric("CARB", f"{m['macros_totales']['c']}g")
+            c4.metric("GRAS", f"{m['macros_totales']['f']}g")
+            st.divider()
             
-        for comida, datos in st.session_state.menu_off.items():
-            with st.expander(f"🍽️ {comida}"):
-                for item in datos['items']:
-                    st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
-                st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
+            if st.button("🔄 Nuevo Menú OFF"):
+                st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
+                st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
+                st.rerun()
+                
+            for comida, datos in st.session_state.menu_off.items():
+                with st.expander(f"🍽️ {comida}"):
+                    for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
 
-    with tabs[3]:
-        st.header("🛒 Lista Semanal")
-        lista = st.session_state.lista_compra
-        if lista:
-            for item, cantidad in sorted(lista.items()):
-                if cantidad > 0: st.checkbox(f"**{item}**: {int(cantidad)}g")
-        else:
-            st.warning("Genera la dieta primero.")
-
-    with tabs[4]:
-        st.header("📤 Exportar Plan")
-        texto_final = generar_texto_plano(st.session_state.rutina, st.session_state.menu_on, st.session_state.menu_off)
-        c1, c2 = st.columns(2)
-        url_w = f"https://api.whatsapp.com/send?text={urllib.parse.quote(texto_final)}"
-        c1.link_button("📱 Enviar WhatsApp", url_w, use_container_width=True)
-        mailto = f"mailto:?subject=Plan MacroLab&body={urllib.parse.quote(texto_final)}"
-        c2.link_button("📧 Enviar Email", mailto, use_container_width=True)
-        st.text_area("Copia manual", texto_final, height=300)
+    # 4. LISTA
+    with t4:
+        st.header("🛒 Lista Sema
