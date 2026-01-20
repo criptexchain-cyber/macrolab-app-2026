@@ -125,7 +125,7 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     return dict(compra)
 
 def mostrar_encabezado_macros(m, etiqueta_kcal):
-    # Función auxiliar para pintar los macros y evitar errores visuales
+    # Función auxiliar para pintar los macros
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(etiqueta_kcal, int(m['total']))
     c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
@@ -348,6 +348,7 @@ with st.sidebar:
 
     st.write("")
     with st.expander("🏪 TIENDA FITNESS"):
+        # URLS GENÉRICAS CON TU TAG
         l_whey = f"https://www.amazon.es/s?k=proteina+whey&tag={ID_AFILIADO}"
         l_iso  = f"https://www.amazon.es/s?k=proteina+iso&tag={ID_AFILIADO}"
         l_crea = f"https://www.amazon.es/s?k=creatina+monohidrato&tag={ID_AFILIADO}"
@@ -380,10 +381,14 @@ else:
     
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
+    # ----------------------------------------------------
+    # ESTRATEGIA 1: LINEAL (4 PESTAÑAS)
+    # ----------------------------------------------------
     if es_lineal:
-        t_tabs = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
+        t_rutina, t_dieta, t_lista, t_share = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
         
-        with t_tabs[0]:
+        # --- RUTINA ---
+        with t_rutina:
             rut = st.session_state.rutina
             if not rut.get('sesiones'):
                 st.warning("Sin entrenamiento.")
@@ -397,7 +402,8 @@ else:
                 st.markdown("### 📊 Volumen Semanal")
                 st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
-        with t_tabs[1]:
+        # --- DIETA ÚNICA ---
+        with t_dieta:
             mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
             if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
@@ -408,14 +414,9 @@ else:
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
         
-        with t_tabs[2]:
+        # --- LISTA ---
+        with t_lista:
             st.header("🛒 Lista Semanal")
             lista = st.session_state.lista_compra
             if lista:
-                for item, cantidad in sorted(lista.items()):
-                    if cantidad > 0: st.checkbox(f"**{item}**: {int(cantidad)}g")
-            else: st.warning("Genera la dieta primero.")
-
-        with t_tabs[3]:
-            st.header("📤 Exportar Plan")
-            texto_final = generar_texto
+                for item, cantidad 
