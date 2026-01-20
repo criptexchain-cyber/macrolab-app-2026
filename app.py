@@ -9,8 +9,11 @@ from collections import defaultdict
 TITULO_SEO = "MacroLab - Entrenador y Nutricionista Inteligente"
 ICONO = "🔬"
 
-# --- 💰 CONFIGURACIÓN AFILIADO (¡PON TU ID AQUÍ!) ---
-ID_AFILIADO = "PON_TU_ID_AQUÍ"  # Ej: macrolab-21
+# ==============================================================================
+# 💰 CONFIGURACIÓN DE AFILIADO
+# ==============================================================================
+ID_AFILIADO = "criptex02-21" 
+# ==============================================================================
 
 try:
     st.set_page_config(page_title=TITULO_SEO, page_icon=ICONO, layout="wide")
@@ -122,7 +125,7 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     return dict(compra)
 
 def mostrar_encabezado_macros(m, etiqueta_kcal):
-    # Función auxiliar para pintar los macros y evitar errores visuales
+    # Función auxiliar para pintar los macros
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(etiqueta_kcal, int(m['total']))
     c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
@@ -251,7 +254,6 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil):
         for ej in ejercicios:
             txt += f"- {ej['Ejercicio']} | {ej['Sets']}x{ej['Reps']} | RIR:{ej['RIR']}\n"
     
-    # LÓGICA LINEAL VS CICLADO
     if "Lineal" in estrategia:
         txt += "\n*🍽️ DIETA (Diaria)*\n"
         for comida, datos in menu_on.items():
@@ -273,7 +275,7 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil):
     return txt
 
 # ==========================================
-# 3. INTERFAZ GRÁFICA (FRONTEND UNIFICADO)
+# 3. INTERFAZ GRÁFICA (FRONTEND)
 # ==========================================
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
@@ -346,14 +348,25 @@ with st.sidebar:
 
     st.write("")
     with st.expander("🏪 TIENDA FITNESS"):
-        # URLS CONSTRUIDAS CON F-STRING PARA EVITAR ERRORES DE COPIA
-        link_prot = f"https://www.amazon.es/s?k=proteina+whey&tag={ID_AFILIADO}"
-        link_crea = f"https://www.amazon.es/s?k=creatina+monohidrato&tag={ID_AFILIADO}"
-        link_gym  = f"https://www.amazon.es/s?k=juego+mancuernas&tag={ID_AFILIADO}"
+        # URLS GENÉRICAS CON TU TAG
+        l_whey = f"https://www.amazon.es/s?k=proteina+whey&tag={ID_AFILIADO}"
+        l_iso  = f"https://www.amazon.es/s?k=proteina+iso&tag={ID_AFILIADO}"
+        l_crea = f"https://www.amazon.es/s?k=creatina+monohidrato&tag={ID_AFILIADO}"
+        l_beta = f"https://www.amazon.es/s?k=beta+alanina&tag={ID_AFILIADO}"
+        l_omeg = f"https://www.amazon.es/s?k=omega+3&tag={ID_AFILIADO}"
+        l_vitd = f"https://www.amazon.es/s?k=vitamina+d&tag={ID_AFILIADO}"
         
-        st.link_button("🥛 Proteína", link_prot, use_container_width=True)
-        st.link_button("⚡ Creatina", link_crea, use_container_width=True)
-        st.link_button("🏋️ Mancuernas", link_gym, use_container_width=True)
+        c1, c2 = st.columns(2)
+        c1.link_button("🥛 Proteína Whey", l_whey, use_container_width=True)
+        c2.link_button("💎 Proteína ISO", l_iso, use_container_width=True)
+        
+        c3, c4 = st.columns(2)
+        c3.link_button("⚡ Creatina", l_crea, use_container_width=True)
+        c4.link_button("🔋 Beta Alanina", l_beta, use_container_width=True)
+        
+        c5, c6 = st.columns(2)
+        c5.link_button("🐟 Omega 3", l_omeg, use_container_width=True)
+        c6.link_button("☀️ Vitamina D", l_vitd, use_container_width=True)
 
 # --- PANTALLA PRINCIPAL ---
 if not st.session_state.generado:
@@ -366,7 +379,6 @@ if not st.session_state.generado:
 else:
     st.title("🔬 Panel de Control")
     
-    # 1. DETERMINAR PESTAÑAS
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
     if es_lineal:
@@ -376,7 +388,7 @@ else:
         
     mis_tabs = st.tabs(nombres_tabs)
     
-    # --- PESTAÑA 0: RUTINA (COMÚN) ---
+    # --- PESTAÑA 0: RUTINA ---
     with mis_tabs[0]:
         rut = st.session_state.rutina
         if not rut.get('sesiones'):
@@ -393,11 +405,8 @@ else:
 
     # --- PESTAÑAS DE DIETA ---
     if es_lineal:
-        # SOLO 1 PESTAÑA DE DIETA
         with mis_tabs[1]:
-            # USAMOS LA FUNCIÓN AUXILIAR PARA EVITAR ERRORES
             mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
-            
             if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
                 st.session_state.menu_off = st.session_state.menu_on 
@@ -406,23 +415,12 @@ else:
                 with st.expander(f"🍽️ {comida}"):
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
-        
-        idx_lista = 2
-        idx_share = 3
-        
+        idx_lista, idx_share = 2, 3
     else:
-        # MODO CICLADO: 2 PESTAÑAS (ON y OFF)
         with mis_tabs[1]: # ON
-            # USAMOS LA FUNCIÓN AUXILIAR
             mostrar_encabezado_macros(st.session_state.macros_on, "🔥 KCAL")
-            
             if st.button("🔄 Nuevo Menú ON"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
                 st.rerun()
             for comida, datos in st.session_state.menu_on.items():
-                with st.expander(f"🍽️ {comida}"):
-                    for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
-                    st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
-        
-        with mis_tabs[2]: # OFF
-            # USAMO
+                wit
