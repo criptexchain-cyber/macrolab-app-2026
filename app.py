@@ -242,7 +242,6 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil):
     # LÓGICA LINEAL VS CICLADO
     if "Lineal" in estrategia:
         txt += "\n*🍽️ DIETA (Diaria)*\n"
-        # Usamos menu_on porque en lineal son iguales
         for comida, datos in menu_on.items():
             txt += f"_{comida}_: "
             items = [f"{i['nombre']} ({i['gramos_peso']}g)" for i in datos['items']]
@@ -262,7 +261,7 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil):
     return txt
 
 # ==========================================
-# 3. INTERFAZ GRÁFICA
+# 3. INTERFAZ GRÁFICA (FRONTEND UNIFICADO)
 # ==========================================
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
@@ -350,69 +349,75 @@ if not st.session_state.generado:
 else:
     st.title("🔬 Panel de Control")
     
-    # --- LOGICA DE PESTAÑAS (LINEAL VS CICLADO) ---
+    # 1. DETERMINAR PESTAÑAS
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
     
     if es_lineal:
-        # PESTAÑAS PARA MODO LINEAL (SOLO UNA DIETA)
-        tabs = st.tabs(["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"])
+        nombres_tabs = ["🏋️ RUTINA", "🍽️ DIETA", "📝 LISTA", "📤 COMPARTIR"]
+    else:
+        nombres_tabs = ["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"]
         
-        with tabs[0]: # Rutina
-            rut = st.session_state.rutina
-            if not rut.get('sesiones'): st.warning("Sin entrenamiento.")
-            else:
-                c1, c2 = st.columns(2)
-                c1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
-                c2.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
-                for dia, ejercicios in rut['sesiones'].items():
-                    with st.expander(f"📌 {dia}", expanded=True):
-                        st.dataframe(data=ejercicios, hide_index=True, use_container_width=True)
-                st.markdown("### 📊 Volumen Semanal")
-                st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
+    mis_tabs = st.tabs(nombres_tabs)
+    
+    # --- PESTAÑA 0: RUTINA (COMÚN) ---
+    with mis_tabs[0]:
+        rut = st.session_state.rutina
+        if not rut.get('sesiones'):
+            st.warning("Sin entrenamiento.")
+        else:
+            c1, c2 = st.columns(2)
+            c1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
+            c2.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
+            for dia, ejercicios in rut['sesiones'].items():
+                with st.expander(f"📌 {dia}", expanded=True):
+                    st.dataframe(data=ejercicios, hide_index=True, use_container_width=True)
+            st.markdown("### 📊 Volumen Semanal")
+            st.dataframe([{"Grupo": k, "Series": v} for k,v in rut['volumen_total'].items()], use_container_width=True, hide_index=True)
 
-        with tabs[1]: # Dieta Única
-            m = st.session_state.macros_on # Son iguales en lineal
+    # --- PESTAÑAS DE DIETA ---
+    if es_lineal:
+        # SOLO 1 PESTAÑA DE DIETA
+        with mis_tabs[1]:
+            m = st.session_state.macros_on
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("🔥 KCAL", int(m['total']))
             col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
             col3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
             col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
             st.divider()
-            if st.button("🔄 Generar Nuevo Menú"):
+            if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
-                st.session_state.menu_off = st.session_state.menu_on # Espejo
+                st.session_state.menu_off = st.session_state.menu_on 
                 st.rerun()
             for comida, datos in st.session_state.menu_on.items():
                 with st.expander(f"🍽️ {comida}"):
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
                     st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
-
-        with tabs[2]: # Lista
-            st.header("🛒 Lista Semanal")
-            lista = st.session_state.lista_compra
-            if lista:
-                for item, cantidad in sorted(lista.items()):
-                    if cantidad > 0: st.checkbox(f"**{item}**: {int(cantidad)}g")
-            else: st.warning("Genera la dieta primero.")
-
-        with tabs[3]: # Compartir
-            st.header("📤 Exportar Plan")
-            texto_final = generar_texto_plano(st.session_state.rutina, st.session_state.menu_on, st.session_state.menu_off, st.session_state.perfil)
-            texto_encoded = urllib.parse.quote(texto_final)
-            url_w = f"https://api.whatsapp.com/send?text={texto_encoded}"
-            c1, c2 = st.columns(2)
-            c1.link_button("📱 Enviar WhatsApp", url_w, use_container_width=True)
-            mailto = f"mailto:?subject=Plan%20MacroLab&body={texto_encoded}"
-            c2.link_button("📧 Enviar Email", mailto, use_container_width=True)
-            st.text_area("Copia manual", texto_final, height=300)
-
-    else:
-        # PESTAÑAS PARA MODO CICLADO (ON / OFF)
-        tabs = st.tabs(["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
         
-        with tabs[0]: # Rutina
-            rut = st.session_state.rutina
-            if not rut.get('sesiones'): st.warning("Sin entrenamiento.")
-            else:
-                c1, c2 = st.columns(2)
-    
+        # AJUSTE DE ÍNDICES PARA LISTA Y COMPARTIR
+        idx_lista = 2
+        idx_share = 3
+        
+    else:
+        # MODO CICLADO: 2 PESTAÑAS (ON y OFF)
+        with mis_tabs[1]: # ON
+            m = st.session_state.macros_on
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("🔥 KCAL", int(m['total']))
+            col2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
+            col3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
+            col4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
+            st.divider()
+            if st.button("🔄 Nuevo Menú ON"):
+                st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
+                st.rerun()
+            for comida, datos in st.session_state.menu_on.items():
+                with st.expander(f"🍽️ {comida}"):
+                    for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
+                    st.caption(f"Kcal: {int(datos['totales']['kcal'])} | P:{int(datos['totales']['p'])} C:{int(datos['totales']['c'])} F:{int(datos['totales']['f'])}")
+        
+        with mis_tabs[2]: # OFF
+            m = st.session_state.macros_off
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("💤 KCAL", int(m['total']))
+            col2.me
