@@ -17,7 +17,7 @@ except:
 ID_AFILIADO = "criptex02-21"
 
 # ==========================================
-# 1. BASE DE DATOS
+# BASE DE DATOS
 # ==========================================
 DB_ALIMENTOS = [
     {"nombre": "Pechuga de Pollo", "tipo": "protein", "perfil": "salado", "macros": {"p": 23, "c": 0, "f": 1}},
@@ -41,7 +41,7 @@ DB_ALIMENTOS = [
 ]
 
 # ==========================================
-# 2. FUNCIONES LÓGICAS
+# FUNCIONES
 # ==========================================
 def buscar_alimento(tipo, gramos_macro, perfil_plato, prohibidos=[]):
     candidatos = [a for a in DB_ALIMENTOS if a['tipo'] == tipo]
@@ -119,14 +119,16 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     compra = defaultdict(float)
     
     # Ingredientes ON
-    for comida in menu_on.values():
-        for item in comida['items']: 
-            compra[item['nombre']] += item['gramos_peso'] * dias_entreno
-            
+    if menu_on:
+        for comida in menu_on.values():
+            for item in comida['items']: 
+                compra[item['nombre']] += item['gramos_peso'] * dias_entreno
+    
     # Ingredientes OFF
-    for comida in menu_off.values():
-        for item in comida['items']: 
-            compra[item['nombre']] += item['gramos_peso'] * dias_descanso
+    if menu_off:
+        for comida in menu_off.values():
+            for item in comida['items']: 
+                compra[item['nombre']] += item['gramos_peso'] * dias_descanso
             
     return dict(compra)
 
@@ -249,26 +251,28 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil):
             txt += f"- {ej['Ejercicio']} | {ej['Sets']}x{ej['Reps']} | RIR:{ej['RIR']}\n"
     
     txt += "\n*🔥 DIETA ON (Entreno)*\n"
-    for comida, datos in menu_on.items():
-        txt += f"_{comida}_: "
-        items = [f"{i['nombre']} ({i['gramos_peso']}g)" for i in datos['items']]
-        txt += ", ".join(items) + "\n"
+    if menu_on:
+        for comida, datos in menu_on.items():
+            txt += f"_{comida}_: "
+            items = [f"{i['nombre']} ({i['gramos_peso']}g)" for i in datos['items']]
+            txt += ", ".join(items) + "\n"
         
     txt += "\n*💤 DIETA OFF (Descanso)*\n"
-    for comida, datos in menu_off.items():
-        txt += f"_{comida}_: "
-        items = [f"{i['nombre']} ({i['gramos_peso']}g)" for i in datos['items']]
-        txt += ", ".join(items) + "\n"
+    if menu_off:
+        for comida, datos in menu_off.items():
+            txt += f"_{comida}_: "
+            items = [f"{i['nombre']} ({i['gramos_peso']}g)" for i in datos['items']]
+            txt += ", ".join(items) + "\n"
             
     return txt
 
 # ==========================================
-# 3. INTERFAZ (FRONTEND UNIFICADO)
+# INTERFAZ (FRONTEND)
 # ==========================================
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
 if 'menu_on' not in st.session_state: st.session_state.menu_on = {}
-if 'menu_off' not in st.session_state: st.session_state.menu_off = {}
+if 'menu_off' not in st.session_state: st.session_state.menu_off = {} 
 if 'macros_on' not in st.session_state: st.session_state.macros_on = {}
 if 'macros_off' not in st.session_state: st.session_state.macros_off = {}
 if 'lista_compra' not in st.session_state: st.session_state.lista_compra = {}
@@ -316,7 +320,7 @@ with st.sidebar:
         }
         st.session_state.perfil = perfil
         
-        # 1. Calcular Macros Base
+        # 1. Calcular Macros
         base_on = calcular_macros(perfil)
         base_off = calcular_macros_descanso(base_on)
         
@@ -324,7 +328,7 @@ with st.sidebar:
         if estrategia == "📏 Lineal (Estable)":
             promedio = calcular_promedio_lineal(base_on, base_off, dias_entreno)
             st.session_state.macros_on = promedio
-            st.session_state.macros_off = promedio
+            st.session_state.macros_off = promedio # Iguales en lineal
         else:
             st.session_state.macros_on = base_on
             st.session_state.macros_off = base_off
@@ -341,15 +345,17 @@ with st.sidebar:
 
     st.write("")
     with st.expander("🏪 TIENDA FITNESS"):
-        base_amz = "https://www.amazon.es/s?k="
+        # URLS SEGURAS
         tag = "&tag=" + ID_AFILIADO
-        st.link_button("🥛 Proteína Whey", base_amz + "proteina+whey" + tag, use_container_width=True)
-        st.link_button("💎 Proteína ISO", base_amz + "proteina+iso" + tag, use_container_width=True)
-        st.link_button("⚡ Creatina", base_amz + "creatina+monohidrato" + tag, use_container_width=True)
-        st.link_button("🔋 Beta Alanina", base_amz + "beta+alanina" + tag, use_container_width=True)
-        st.link_button("🐟 Omega 3", base_amz + "omega+3" + tag, use_container_width=True)
-        st.link_button("☀️ Vitamina D", base_amz + "vitamina+d" + tag, use_container_width=True)
-        st.link_button("🏋️ Mancuernas", base_amz + "juego+mancuernas" + tag, use_container_width=True)
+        base = "https://www.amazon.es/s?k="
+        
+        st.link_button("🥛 Proteína Whey", base + "proteina+whey" + tag, use_container_width=True)
+        st.link_button("💎 Proteína ISO", base + "proteina+iso" + tag, use_container_width=True)
+        st.link_button("⚡ Creatina", base + "creatina+monohidrato" + tag, use_container_width=True)
+        st.link_button("🔋 Beta Alanina", base + "beta+alanina" + tag, use_container_width=True)
+        st.link_button("🐟 Omega 3", base + "omega+3" + tag, use_container_width=True)
+        st.link_button("☀️ Vitamina D", base + "vitamina+d" + tag, use_container_width=True)
+        st.link_button("🏋️ Mancuernas", base + "juego+mancuernas" + tag, use_container_width=True)
 
 # --- PANTALLA PRINCIPAL ---
 if not st.session_state.generado:
@@ -359,10 +365,10 @@ if not st.session_state.generado:
 else:
     st.title("🔬 Panel de Control")
     
-    # ESTRUCTURA UNIFICADA (SIEMPRE 5 PESTAÑAS)
+    # ESTRUCTURA UNICA Y ROBUSTA (5 PESTAÑAS SIEMPRE)
     t1, t2, t3, t4, t5 = st.tabs(["🏋️ RUTINA", "🔥 DÍA ON", "💤 DÍA OFF", "📝 LISTA", "📤 COMPARTIR"])
     
-    # PESTAÑA 1: RUTINA
+    # 1. RUTINA
     with t1:
         rut = st.session_state.rutina
         if not rut.get('sesiones'):
@@ -372,7 +378,7 @@ else:
                 with st.expander(f"📌 {dia}", expanded=True):
                     st.dataframe(ejercicios, hide_index=True, use_container_width=True)
 
-    # PESTAÑA 2: DÍA ON
+    # 2. DÍA ON
     with t2:
         m = st.session_state.macros_on
         if m:
@@ -385,7 +391,6 @@ else:
             
             if st.button("🔄 Nuevo Menú ON"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
-                # Actualizar lista al cambiar menú
                 st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
                 st.rerun()
                 
@@ -393,7 +398,7 @@ else:
                 with st.expander(f"🍽️ {comida}"):
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
 
-    # PESTAÑA 3: DÍA OFF
+    # 3. DÍA OFF
     with t3:
         m = st.session_state.macros_off
         if m:
@@ -406,7 +411,6 @@ else:
             
             if st.button("🔄 Nuevo Menú OFF"):
                 st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
-                # Actualizar lista al cambiar menú
                 st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno)
                 st.rerun()
                 
@@ -414,7 +418,7 @@ else:
                 with st.expander(f"🍽️ {comida}"):
                     for item in datos['items']: st.write(f"• **{item['nombre']}**: {item['gramos_peso']}g")
 
-    # PESTAÑA 4: LISTA
+    # 4. LISTA
     with t4:
         st.header("🛒 Lista Semanal")
         lista = st.session_state.lista_compra
@@ -424,12 +428,12 @@ else:
             for item, cant in sorted(lista.items()):
                 st.checkbox(f"**{item}**: {int(cant)}g")
 
-    # PESTAÑA 5: COMPARTIR
+    # 5. COMPARTIR
     with t5:
         st.header("📤 Exportar")
         texto = generar_texto_plano(st.session_state.rutina, st.session_state.menu_on, st.session_state.menu_off, st.session_state.perfil)
         
-        # Enlaces
-        texto_encoded = urllib.parse.quote(texto)
-        link_w = f"https://api.whatsapp.com/send?text={texto_encoded}"
-        link_m = f"mailto:?subject=Plan%20Ma
+        # Enlaces seguros (sin f-string largas)
+        texto_safe = urllib.parse.quote(texto)
+        link_w = "https://api.whatsapp.com/send?text=" + texto_safe
+        link_m = "mailto:?subject=Plan%20MacroLab&bod
