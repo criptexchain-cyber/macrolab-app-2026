@@ -30,19 +30,44 @@ def calcular_macros(perfil):
         
     tdee = tmb * actividad
     
-    # Ajuste por objetivo
+    # Ajuste por Objetivo y Velocidad (Intensidad)
     goal = perfil['goal']
-    if goal == '1': target_kcal = tdee - 400  # Perder
-    elif goal == '2': target_kcal = tdee + 300 # Ganar
-    else: target_kcal = tdee # Mantener
+    intensity = perfil['intensity'] # 1: Lento, 2: Estándar, 3: Rápido
+    
+    ajuste_kcal = 0
+    
+    if goal == '1': # Perder Grasa
+        if intensity == "Lento (Conservador)": ajuste_kcal = -250
+        elif intensity == "Estándar": ajuste_kcal = -400
+        else: ajuste_kcal = -600 # Rápido
+        
+    elif goal == '2': # Ganar Músculo
+        if intensity == "Lento (Lean Bulk)": ajuste_kcal = +200
+        elif intensity == "Estándar": ajuste_kcal = +350
+        else: ajuste_kcal = +500 # Dirty Bulk
+        
+    else: # Mantener
+        ajuste_kcal = 0
+    
+    target_kcal = tdee + ajuste_kcal
     
     # Reparto de Macros Estándar
-    prot_g = 2.0 * peso # 2g por kg
-    fat_g = 0.9 * peso  # 0.9g por kg
+    # Proteína: 1.8 a 2.2 según objetivo
+    factor_prot = 2.2 if goal == '1' else 2.0 
+    prot_g = factor_prot * peso 
+    
+    # Grasas: 0.8 a 1.0
+    fat_g = 0.9 * peso
     
     kcal_p = prot_g * 4
     kcal_f = fat_g * 9
     rem_kcal = target_kcal - kcal_p - kcal_f
+    
+    # Si las calorías son muy bajas, asegurar mínimo de grasas
+    if rem_kcal < 0:
+        rem_kcal = 0
+        target_kcal = kcal_p + kcal_f # Ajuste forzoso
+        
     carb_g = rem_kcal / 4
     
     # Estructura de comidas
@@ -95,7 +120,7 @@ def generar_rutina_inteligente(perfil):
         "Face Pull": {"grupo": "Hombro Post.", "tipo": "Accesorio"}
     }
 
-    # Estructuras de Rutina (Full Body o Torso/Pierna según días)
+    # Estructuras de Rutina
     estructura = {}
     
     if dias <= 3:
@@ -114,10 +139,8 @@ def generar_rutina_inteligente(perfil):
         if dias >= 5: estructura["Día E (Brazo/Hombro)"] = ["Press Militar", "Elevaciones Laterales", "Curl de Bíceps", "Extensiones Tríceps", "Face Pull"]
         if dias == 6: estructura["Día F (Recordatorios)"] = ["Sentadilla", "Press Banca", "Jalón al Pecho", "Plancha Abdominal"]
 
-    # Generación de la Rutina Detallada
+    # Generación Detallada
     rutina_final = {'sesiones': {}, 'volumen_total': defaultdict(int)}
-    
-    # Seleccionamos solo los días necesarios
     dias_activos = list(estructura.keys())[:dias]
     
     for nombre_dia in dias_activos:
@@ -127,18 +150,16 @@ def generar_rutina_inteligente(perfil):
         for ej_nombre in lista_ejercicios:
             datos_ej = db_ejercicios.get(ej_nombre, {"grupo": "General", "tipo": "Accesorio"})
             
-            # Lógica de Series y Repes según Nivel y Tipo
             if datos_ej['tipo'] == "Multiarticular":
                 series = 3 if nivel == "Principiante" else 4
                 repes = "6-8"
             elif datos_ej['tipo'] == "Máquina":
                 series = 3
                 repes = "10-12"
-            else: # Aislamiento
+            else: 
                 series = 2 if nivel == "Principiante" else 3
                 repes = "12-15"
             
-            # Contabilizar Volumen Efectivo
             rutina_final['volumen_total'][datos_ej['grupo']] += series
             
             detalles_dia.append({
@@ -148,29 +169,18 @@ def generar_rutina_inteligente(perfil):
                 'repes': repes,
                 'rir': cfg['rir'],
                 'tempo': cfg['tempo_base'],
-                'tips': f"Enfoca en {datos_ej['grupo']}"
+                'tips': f"Foco: {datos_ej['grupo']}"
             })
             
         rutina_final['sesiones'][nombre_dia] = detalles_dia
         
     return rutina_final
 
-# --- 2. FUNCIONES AUXILIARES (Texto, Cálculo, Etc) ---
-def calcular_horas_sueno(hora_bed, hora_wake):
-    try:
-        t1 = datetime.datetime.strptime(str(hora_bed), "%H:%M:%S").time()
-        t2 = datetime.datetime.strptime(str(hora_wake), "%H:%M:%S").time()
-        dummy_date = datetime.date(2000, 1, 1)
-        dt1 = datetime.datetime.combine(dummy_date, t1)
-        dt2 = datetime.datetime.combine(dummy_date, t2)
-        if dt2 < dt1: dt2 += datetime.timedelta(days=1)
-        return round((dt2 - dt1).total_seconds() / 3600, 1)
-    except: return 0.0
-
+# --- 2. FUNCIONES AUXILIARES ---
 def calcular_macros_descanso(res_entreno):
     res = copy.deepcopy(res_entreno)
-    res['total'] = res['total'] * 0.85 # 15% menos kcal
-    res['macros_totales']['c'] = int(res['macros_totales']['c'] * 0.6) # Bajada de carbos
+    res['total'] = res['total'] * 0.85 
+    res['macros_totales']['c'] = int(res['macros_totales']['c'] * 0.6) 
     return res
 
 def generar_texto_copiable(rutina, menu_on, menu_off):
@@ -189,7 +199,6 @@ def generar_texto_copiable(rutina, menu_on, menu_off):
 
 # --- 3. INTERFAZ (FRONTEND) ---
 
-# Estado de sesión
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
 if 'perfil' not in st.session_state: st.session_state.perfil = {}
@@ -206,12 +215,31 @@ with st.sidebar:
     genero_val = "male" if genero == "Hombre" else "female"
 
     st.subheader("🔥 Nivel y Actividad")
-    act_map = {"Sedentario": 1.2, "Ligero": 1.375, "Moderado": 1.55, "Activo": 1.725}
-    actividad = act_map[st.selectbox("Actividad Diaria", list(act_map.keys()))]
     
+    # 1. Selector de Actividad (TEXTO CORREGIDO)
+    act_map = {
+        "1. Sedentario (x1.2)": 1.2,
+        "2. Ligero (x1.375)": 1.375,
+        "3. Moderado (x1.55)": 1.55,
+        "4. Activo (x1.725)": 1.725,
+        "5. Muy Activo (x1.9)": 1.9
+    }
+    op_act = st.selectbox("Actividad Diaria", list(act_map.keys()))
+    actividad = act_map[op_act]
+    
+    # 2. Objetivo
     obj_txt = st.selectbox("Objetivo", ["1. Perder Grasa", "2. Ganar Músculo", "3. Mantener"])
     
-    # --- NUEVO: SELECTOR DE NIVEL ---
+    # 3. Velocidad (INTENSIDAD RECUPERADA)
+    if obj_txt.startswith("1"):
+        opciones_int = ["Lento (Conservador)", "Estándar", "Rápido (Agresivo)"]
+    elif obj_txt.startswith("2"):
+        opciones_int = ["Lento (Lean Bulk)", "Estándar", "Rápido (Dirty Bulk)"]
+    else:
+        opciones_int = ["Estándar"]
+        
+    intensidad = st.select_slider("Ritmo de Progreso", options=opciones_int, value="Estándar")
+
     st.markdown("---")
     st.caption("🏋️ Configuración Gym")
     dias_entreno = st.slider("Días Gym/Semana", 0, 6, 4)
@@ -224,12 +252,13 @@ with st.sidebar:
     hora_bed = st.time_input("Hora Dormir", datetime.time(23, 0))
     hora_wake = st.time_input("Hora Despertar", datetime.time(7, 30))
 
+    # BOTÓN PRINCIPAL
     if st.button("🚀 INICIAR LABORATORIO", use_container_width=True):
         st.session_state.generado = True
         perfil = {
             "weight": peso, "height": altura, "age": int(edad), "gender": genero_val,
             "goal": obj_txt[0], "activity": actividad, "num_comidas": n_comidas,
-            "dias_entreno": dias_entreno, "nivel": nivel_exp
+            "dias_entreno": dias_entreno, "nivel": nivel_exp, "intensity": intensidad
         }
         st.session_state.perfil = perfil
         st.session_state.macros_on = calcular_macros(perfil)
@@ -240,13 +269,27 @@ with st.sidebar:
         else:
             st.session_state.rutina = {'sesiones': {}, 'volumen_total': {}}
 
+    # --- TIENDA (MOVIDA AQUÍ DENTRO) ---
+    st.write("") # Espacio
+    with st.expander("🏪 TIENDA FITNESS (Clic aquí)"):
+        st.caption("👇 Equipamiento Recomendado")
+        
+        # Enlaces de Búsqueda (Search + Tag)
+        st.link_button("🥛 Proteína Whey", "https://www.amazon.es/s?k=proteina+whey&tag=criptex02-21", use_container_width=True)
+        st.link_button("⚡ Creatina", "https://www.amazon.es/s?k=creatina+monohidrato&tag=criptex02-21", use_container_width=True)
+        st.link_button("🚀 Pre-Entreno", "https://www.amazon.es/s?k=pre+workout&tag=criptex02-21", use_container_width=True)
+        st.divider()
+        st.link_button("🏋️ Juego Mancuernas", "https://www.amazon.es/s?k=juego+mancuernas&tag=criptex02-21", use_container_width=True)
+        st.link_button("🧘 Esterilla", "https://www.amazon.es/s?k=esterilla+yoga&tag=criptex02-21", use_container_width=True)
+        st.link_button("⚖️ Báscula Cocina", "https://www.amazon.es/s?k=bascula+cocina+digital&tag=criptex02-21", use_container_width=True)
+
+
 # PANTALLA PRINCIPAL
 if not st.session_state.generado:
     st.title("🔬 MacroLab")
     st.markdown("### Sistema de Entrenamiento y Nutrición de Precisión")
-    st.info("👈 Configura tu perfil en la izquierda para empezar.")
+    st.info("👈 Configura tu perfil en la barra lateral para empezar.")
     
-    # Footer SEO
     st.divider()
     with st.expander("🔍 ¿Cómo funciona MacroLab?"):
         st.write("Calculadora científica de macros y generador de rutinas con periodización.")
@@ -261,12 +304,13 @@ else:
     with t_rutina:
         rut = st.session_state.rutina
         
-        if not rut['sesiones']:
+        if not rut.get('sesiones'):
             st.warning("Selecciona al menos 1 día de entreno para ver rutinas.")
         else:
-            col_info1, col_info2 = st.columns(2)
+            col_info1, col_info2, col_info3 = st.columns(3)
             col_info1.info(f"**Nivel:** {st.session_state.perfil['nivel']}")
             col_info2.info(f"**Objetivo:** {obj_txt.split('.')[1]}")
+            col_info3.info(f"**Ritmo:** {st.session_state.perfil['intensity']}")
             
             for dia, ejercicios in rut['sesiones'].items():
                 with st.expander(f"📌 {dia}", expanded=True):
@@ -293,7 +337,6 @@ else:
             st.caption("Esta tabla te muestra si estás entrenando equilibrado.")
             
             volumen = rut['volumen_total']
-            # Convertimos a lista para mostrar bonito
             datos_vol = [{"Grupo Muscular": k, "Series Totales": v} for k, v in volumen.items()]
             st.dataframe(datos_vol, use_container_width=True)
 
@@ -305,14 +348,9 @@ else:
         c2.metric("Carbos", f"{m_on['macros_totales']['c']} g")
         c3.metric("Grasas", f"{m_on['macros_totales']['f']} g")
         st.metric("Kcal Totales", int(m_on['total']))
+        st.caption(f"Ajuste aplicado por ritmo '{st.session_state.perfil['intensity']}'")
 
     with t_share:
         st.subheader("📋 Texto para Copiar")
         txt_final = generar_texto_copiable(st.session_state.rutina, {}, {})
         st.code(txt_final)
-
-# --- TIENDA (FINAL) ---
-st.divider()
-with st.expander("🏪 TIENDA FITNESS"):
-    st.write("Equipamiento recomendado: Proteína, Creatina, Mancuernas...")
-    st.link_button("Ir a Amazon", "https://www.amazon.es/s?k=proteina&tag=criptex02-21")
