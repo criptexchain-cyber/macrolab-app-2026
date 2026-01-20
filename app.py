@@ -6,16 +6,19 @@ import urllib.parse
 from collections import defaultdict
 
 # --- CONFIGURACIÓN SEO ---
-try:
-    st.set_page_config(page_title="MacroLab", page_icon="🔬", layout="wide")
-except:
-    pass
+TITULO_SEO = "MacroLab - Entrenador y Nutricionista Inteligente"
+ICONO = "🔬"
 
 # ==============================================================================
-# 💰 TU ID DE AFILIADO
+# 💰 CONFIGURACIÓN DE AFILIADO
 # ==============================================================================
 ID_AFILIADO = "criptex02-21" 
 # ==============================================================================
+
+try:
+    st.set_page_config(page_title=TITULO_SEO, page_icon=ICONO, layout="wide")
+except:
+    pass
 
 # ==========================================
 # 1. BASE DE DATOS Y FUNCIONES
@@ -50,7 +53,7 @@ def buscar_alimento(tipo, gramos_macro, perfil_plato, prohibidos=[]):
             elif p == "gluten": candidatos = [x for x in candidatos if x['nombre'] not in ["Pasta Integral", "Pan Integral", "Avena"]]
             elif p == "pescado": candidatos = [x for x in candidatos if x['nombre'] not in ["Merluza", "Atún al Natural"]]
             elif p == "cacahuete": candidatos = [x for x in candidatos if x['nombre'] not in ["Frutos Secos", "Crema de Cacahuete"]]
-            
+    
     if perfil_plato != "neutro":
         candidatos = [a for a in candidatos if a['perfil'] in [perfil_plato, "neutro"]]
     
@@ -131,12 +134,11 @@ def generar_lista_compra_inteligente(menu_on, menu_off, dias_entreno):
     return dict(compra)
 
 def mostrar_encabezado_macros(m, etiqueta_kcal):
-    # Función auxiliar para pintar los macros
     c1, c2, c3, c4 = st.columns(4)
     c1.metric(etiqueta_kcal, int(m['total']))
-    c2.metric("🥩 PROT", f"{m['macros_totales']['p']}g")
-    c3.metric("🍚 CARB", f"{m['macros_totales']['c']}g")
-    c4.metric("🥑 GRAS", f"{m['macros_totales']['f']}g")
+    c2.metric("PROT", f"{m['macros_totales']['p']}g")
+    c3.metric("CARB", f"{m['macros_totales']['c']}g")
+    c4.metric("GRAS", f"{m['macros_totales']['f']}g")
     st.divider()
 
 # ==========================================
@@ -391,12 +393,7 @@ else:
 
         with t2: # DIETA
             m = st.session_state.macros_on
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("🔥 KCAL", int(m['total']))
-            c2.metric("PROT", f"{m['macros_totales']['p']}g")
-            c3.metric("CARB", f"{m['macros_totales']['c']}g")
-            c4.metric("GRAS", f"{m['macros_totales']['f']}g")
-            st.divider()
+            mostrar_encabezado_macros(m, "🔥 KCAL")
             
             if st.button("🔄 Nuevo Menú"):
                 st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
@@ -420,12 +417,18 @@ else:
             st.header("📤 Exportar")
             texto = generar_texto_plano(st.session_state.rutina, st.session_state.menu_on, st.session_state.menu_off, st.session_state.perfil)
             
-            # Enlace seguro
+            # WhatsApp
             base_w = "https://api.whatsapp.com/send?text="
             link_w = base_w + urllib.parse.quote(texto)
-            st.link_button("📱 Enviar WhatsApp", link_w)
+            
+            # Email
+            subject = urllib.parse.quote("Plan MacroLab")
+            body = urllib.parse.quote(texto)
+            link_m = f"mailto:?subject={subject}&body={body}"
+            
+            c1, c2 = st.columns(2)
+            c1.link_button("📱 Enviar WhatsApp", link_w, use_container_width=True)
+            c2.link_button("📧 Enviar Email", link_m, use_container_width=True)
             st.text_area("Copia manual", texto, height=300)
 
-    # ----------------------------------------
-    # OPCIÓN 2: DIETA CICLADA
-    # ---------------------------------------
+  
