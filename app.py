@@ -6,16 +6,17 @@ import copy
 import urllib.parse
 from collections import defaultdict
 
-# --- CONFIGURACIÓN ---
+# --- CONFIGURACIÓN SEO ---
+TITULO_SEO = "MacroLab - Entrenador y Nutricionista Inteligente"
+ICONO = "🔬"
+
 try:
-    st.set_page_config(page_title="MacroLab", page_icon="🔬", layout="wide")
+    st.set_page_config(page_title=TITULO_SEO, page_icon=ICONO, layout="wide")
 except:
     pass
 
-ID_AFILIADO = "criptex02-21"
-
 # ==========================================
-# 1. BASE DE DATOS
+# 1. BASE DE DATOS DE ALIMENTOS (INTERNA)
 # ==========================================
 DB_ALIMENTOS = [
     {"nombre": "Pechuga de Pollo", "tipo": "protein", "perfil": "salado", "macros": {"p": 23, "c": 0, "f": 1}},
@@ -38,9 +39,6 @@ DB_ALIMENTOS = [
     {"nombre": "Crema de Cacahuete", "tipo": "fat", "perfil": "dulce", "macros": {"p": 8, "c": 6, "f": 16}}
 ]
 
-# ==========================================
-# 2. FUNCIONES
-# ==========================================
 def buscar_alimento(tipo, gramos_macro, perfil_plato, prohibidos=[]):
     candidatos = [a for a in DB_ALIMENTOS if a['tipo'] == tipo]
     
@@ -87,11 +85,13 @@ def crear_menu_diario(datos_macros, prohibidos=[]):
             
         llevamos = {'p':0, 'c':0, 'f':0, 'kcal':0}
         
+        # Proteína
         sug_p = buscar_alimento('protein', m['prot'], perfil, prohibidos)
         if sug_p:
             items_plato.append(sug_p)
             for k in ['p','c','f']: llevamos[k] += sug_p['macros_reales'].get(k,0)
             
+        # Carbohidratos
         rest_c = m['carb'] - llevamos['c']
         if rest_c > 5:
             sug_c = buscar_alimento('carbohydrates', rest_c, perfil, prohibidos)
@@ -99,6 +99,7 @@ def crear_menu_diario(datos_macros, prohibidos=[]):
                 items_plato.append(sug_c)
                 for k in ['p','c','f']: llevamos[k] += sug_c['macros_reales'].get(k,0)
 
+        # Grasas
         rest_f = m['fat'] - llevamos['f']
         if rest_f > 3:
             sug_f = buscar_alimento('fat', rest_f, perfil, prohibidos)
@@ -288,6 +289,8 @@ def generar_texto_plano(rutina, menu_on, menu_off, perfil, es_lineal):
 # ==========================================
 # 4. INTERFAZ GRÁFICA (FRONTEND UNIFICADO)
 # ==========================================
+ID_AFILIADO = "criptex02-21" 
+
 if 'generado' not in st.session_state: st.session_state.generado = False
 if 'rutina' not in st.session_state: st.session_state.rutina = {}
 if 'menu_on' not in st.session_state: st.session_state.menu_on = {}
@@ -353,7 +356,6 @@ with st.sidebar:
         st.session_state.menu_on = crear_menu_diario(st.session_state.macros_on, prohibidos)
         st.session_state.menu_off = crear_menu_diario(st.session_state.macros_off, prohibidos)
         
-        # Calcular lista
         es_lineal = "Lineal" in estrategia
         st.session_state.lista_compra = generar_lista_compra_inteligente(st.session_state.menu_on, st.session_state.menu_off, dias_entreno, es_lineal)
         
@@ -381,15 +383,16 @@ if not st.session_state.generado:
     st.info("👈 Configura tus datos en el menú izquierdo.")
     st.divider()
     with st.expander("🔍 ¿Cómo funciona?"):
-        st.write("Calculadora científica de macros y generador de rutinas.")
+        st.markdown("""
+        1. **Rellena tus datos** en el menú lateral izquierdo.
+        2. **Elige tu estrategia:** Lineal (estable) o Ciclada (días altos/bajos).
+        3. Pulsa **🚀 INICIAR LABORATORIO**.
+        """)
+    st.caption("⚠️ **Descargo de Responsabilidad:** Esta aplicación ofrece recomendaciones generales basadas en algoritmos deportivos. No sustituye la opinión, diagnóstico o tratamiento de un médico o nutricionista cualificado.")
 else:
     st.title("🔬 Panel de Control")
     
     es_lineal = "Lineal" in st.session_state.perfil.get('estrategia', '')
-    
-    # ---------------------------------------------------------
-    # AQUÍ ESTÁ EL CAMBIO CLAVE: VISUALIZACIÓN DINÁMICA SEGURA
-    # ---------------------------------------------------------
     
     if es_lineal:
         # SI ES LINEAL -> 4 PESTAÑAS (SOLO UNA DE DIETA)
